@@ -4,10 +4,12 @@ import com.codelinc.dental.config.AwsBedrockProperties;
 import com.codelinc.dental.exception.AiServiceException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
+import software.amazon.awssdk.services.bedrockruntime.model.ConverseRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseOutput;
 import software.amazon.awssdk.services.bedrockruntime.model.Message;
@@ -16,7 +18,6 @@ import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 /**
@@ -44,7 +45,7 @@ class BedrockAiServiceTest {
                         .build())
                 .build();
 
-        when(client.converse(any(Consumer.class))).thenReturn(response);
+        when(client.converse(ArgumentMatchers.<Consumer<ConverseRequest.Builder>>any())).thenReturn(response);
 
         String result = svc.generateText("hi");
 
@@ -55,7 +56,7 @@ class BedrockAiServiceTest {
     void wrapsClientFailureAsAiServiceException() {
         BedrockAiService svc = new BedrockAiService(client, properties);
 
-        when(client.converse(any(Consumer.class)))
+        when(client.converse(ArgumentMatchers.<Consumer<ConverseRequest.Builder>>any()))
                 .thenThrow(new RuntimeException("boom"));
 
         assertThatThrownBy(() -> svc.generateText("hi"))
