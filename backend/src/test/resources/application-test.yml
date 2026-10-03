@@ -1,0 +1,14 @@
+spring:
+  # Tests should not require a live database. Exclude DataSource/JPA auto-config
+  # so controller slice tests and the context load without Neon credentials.
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+
+app:
+  bedrock:
+    region: us-east-2
+    model-id: us.amazon.nova-2-lite-v1:0
+  cors:
+    allowed-origins: http://localhost:5173

@@ -79,6 +79,98 @@ Schema highlights:
   - `v_enrollment_benefit_summary` gives used, planned and remaining maximum, deductible progress, days left and the `benefits_expiring_soon` flag. This drives the progress bar.
 - **Spring Boot:** the files use Flyway naming. Point Flyway at them with `spring.flyway.locations=filesystem:../db/migrations`.
 
+## Backend (Spring Boot + Bedrock)
+
+Java API under `backend/`. This is the shared foundation; business logic
+(procedure extraction, pricing, recommendations, RAG, etc.) is built on top of it.
+
+- **Java 21** (required). The build targets Java 21 even if a newer JDK is your default.
+- **Spring Boot 3.5.x**, Maven, base package `com.codelinc.dental`.
+- **Amazon Bedrock** via AWS SDK for Java v2 (Converse API), model
+  `us.amazon.nova-2-lite-v1:0` in region `us-east-2`.
+- Region and model ID are centralized in `application.yml` / `AwsBedrockProperties`,
+  not hardcoded across the code.
+
+### Package layout
+
+```
+com.codelinc.dental
+├── config        AwsBedrockProperties, BedrockConfig (client bean), CorsConfig
+├── controller    HealthController, AiTestController
+├── dto           AiTestRequest, AiTestResponse, ErrorResponse
+├── model         (empty — JPA entities land here once the Neon schema is final)
+├── repository    (empty — Spring Data repositories go here)
+├── service       AiService, BedrockAiService (Converse API)
+└── exception     AiServiceException, GlobalExceptionHandler
+```
+
+JPA and the Postgres driver are on the classpath but **no entities or tables are
+defined** — the schema is owned by `db/migrations/`. Hibernate is set to
+`ddl-auto: none` so it never creates, drops, or alters the database.
+
+### Environment variables
+
+Names only — see `backend/.env.example`. Never commit real values.
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | Neon JDBC URL, e.g. `jdbc:postgresql://<host>/<db>?sslmode=require` |
+| `DATABASE_USERNAME` | Neon user |
+| `DATABASE_PASSWORD` | Neon password |
+| `AWS_BEARER_TOKEN_BEDROCK` | Bedrock API key; read by the AWS SDK credential chain |
+| `BEDROCK_REGION` | defaults to `us-east-2` |
+| `BEDROCK_MODEL_ID` | defaults to `us.amazon.nova-2-lite-v1:0` |
+| `CORS_ALLOWED_ORIGINS` | defaults to `http://localhost:5173` (Vite dev server) |
+
+The database layer is **opt-in** via the `db` Spring profile, so the API boots for
+early development even before Neon is wired up:
+
+- Without a database: `mvn spring-boot:run` (health + AI endpoints work).
+- With Neon: set the `DATABASE_*` vars and run with `SPRING_PROFILES_ACTIVE=db`.
+
+### Build and run
+
+Use Java 21. If it isn't your default JDK, point `JAVA_HOME` at it:
+
+```bash
+cd backend
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64   # adjust to your Java 21 path
+
+./mvnw -version        # (or: mvn -version) confirm it reports Java 21
+mvn clean verify       # compile + run tests
+mvn spring-boot:run    # start on http://localhost:8080
+```
+
+Bedrock auth comes from your shell. The AWS SDK automatically uses
+`AWS_BEARER_TOKEN_BEDROCK` if it is exported:
+
+```bash
+export AWS_BEARER_TOKEN_BEDROCK="<your Bedrock API key>"
+mvn spring-boot:run
+```
+
+### Test the endpoints
+
+Health check:
+
+```bash
+curl http://localhost:8080/api/health
+# {"status":"ok"}
+```
+
+Bedrock round-trip (temporary dev endpoint):
+
+```bash
+curl -X POST http://localhost:8080/api/ai/test \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Respond with exactly: Java Bedrock integration works."}'
+# {"response":"Java Bedrock integration works."}
+```
+
+If `AWS_BEARER_TOKEN_BEDROCK` is not available to the process, `/api/ai/test`
+returns a clean `502` JSON error instead of a stack trace — the health endpoint
+still works regardless.
+
 ## Swapping in a real tooth model
 
 Only `frontend/src/components/three/ToothPlaceholder.tsx` changes:
