@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { CatmullRomCurve3, Vector3 } from 'three'
+import { CatmullRomCurve3, Vector3, type PerspectiveCamera } from 'three'
 import { useSceneStore } from '../../store/sceneStore'
 
 /** How quickly the camera catches up with the scroll position (higher = snappier). */
 const FOLLOW = 3.5
+
+/** On wide screens the text panels cover the left side, so frame the room right of center. */
+const WIDE_SCREEN = 1024
+const SHIFT = 0.18
 
 /**
  * Glides the camera along a smooth curve through the current room's keyframes.
@@ -16,6 +20,7 @@ export default function CameraRig({ reducedMotion }: { reducedMotion: boolean })
   const keyframes = useSceneStore((s) => s.keyframes)
   const camera = useThree((s) => s.camera)
   const invalidate = useThree((s) => s.invalidate)
+  const size = useThree((s) => s.size)
   const lookAt = useRef(new Vector3(0, 1, 0))
   const desired = useMemo(() => ({ position: new Vector3(), target: new Vector3() }), [])
 
@@ -26,6 +31,17 @@ export default function CameraRig({ reducedMotion }: { reducedMotion: boolean })
       target: new CatmullRomCurve3(keyframes.map((k) => new Vector3(...k.target)), false, 'centripetal'),
     }
   }, [keyframes])
+
+  // Shift the projection, not the camera: the subject moves right without changing the angle.
+  useEffect(() => {
+    const perspective = camera as PerspectiveCamera
+    if (size.width >= WIDE_SCREEN) {
+      perspective.setViewOffset(size.width, size.height, -size.width * SHIFT, 0, size.width, size.height)
+    } else {
+      perspective.clearViewOffset()
+    }
+    invalidate()
+  }, [camera, size.width, size.height, invalidate])
 
   // frameloop="demand": render only when the scroll position changes.
   useEffect(() => useSceneStore.subscribe(() => invalidate()), [invalidate])

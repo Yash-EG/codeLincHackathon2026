@@ -8,7 +8,7 @@ import { ToneMappingMode } from 'postprocessing'
 export default function Effects() {
   return (
     <EffectComposer multisampling={0}>
-      <N8AO halfRes aoRadius={0.9} distanceFalloff={0.6} intensity={2.2} />
+      <N8AO halfRes aoRadius={0.6} distanceFalloff={0.5} intensity={2} />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       <SMAA />
     </EffectComposer>

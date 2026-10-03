@@ -23,7 +23,7 @@ The site is a dental office you walk through, one route per room. **The HTML is 
 | `/` | Entrance | Landing page |
 | `/reception` | Reception | Check in a plan (sample or manual entry) |
 | `/hallway` | Hallway | Every room, as door cards |
-| `/operatory` | Operatory | Describe care in words, or pick a tooth (buttons + 3D arch) |
+| `/operatory` | Operatory | Describe care in words, or pick a tooth from the tooth buttons |
 | `/imaging` | Imaging | Coverage tiers, frequency limits, fine print in plain English |
 | `/consult` | Consult office | What to do this plan year vs. after Jan 1 |
 | `/billing` | Billing | What you pay, line items, in- vs out-of-network |
@@ -35,7 +35,7 @@ Every room shares a persistent shell: a skip link, a header with the **Directory
 - **3D office (immersive):** text sits on frosted panels (at least 88% opaque, so contrast holds over any scene), and the camera glides between keyframes as you scroll.
 - **Traditional:** the 3D code is never downloaded, and panels are solid with no motion. This view turns on automatically when the OS asks for reduced motion or WebGL is unavailable. Either view can be picked in the header.
 
-**Accessibility target:** WCAG 2.2 AA. The skip link, one `<h1>` per room, and focus moving to that `<h1>` on room change are built in. Arrivals are announced in a polite live region. Focus rings use two colors. `scroll-padding` keeps the fixed bars from covering focused content. Errors are linked to their form fields. The tooth map has a full button alternative.
+**Accessibility target:** WCAG 2.2 AA. The skip link, one `<h1>` per room, and focus moving to that `<h1>` on room change are built in. Arrivals are announced in a polite live region. Focus rings use two colors. `scroll-padding` keeps the fixed bars from covering focused content. Errors are linked to their form fields. The tooth map is plain buttons.
 
 ## Repository layout
 
@@ -50,14 +50,16 @@ frontend/src/
   routes/                   room pages: real, accessible content
   components/layout/        AppShell, Header, Directory, ViewToggle, MaxBar, AskAiDialog, SkipLink, LiveRegion
   components/               Panel, RoomIntro, DoorCard, ToothPicker, CheckInForm, AnnualMaxProgress, ...
-  components/three/         the interactive 3D tooth arch (Operatory)
   scenes/                   the background 3D office (lazy chunk)
-    common/SceneRoot.tsx    one persistent <Canvas> at z-index -1
+    common/SceneRoot.tsx    one persistent <Canvas> at z-index -1, swaps the room scene per route
     common/CameraRig.tsx    damped camera along a curve through the room's keyframes
     common/useScrollKeyframes.ts  ScrollTrigger per [data-camera] section -> camera progress
-    common/Lighting.tsx  Effects.tsx  materials.ts
-    rooms/PlaceholderRoom.tsx     clay diorama, the drop-in point for Spline / glTF rooms
-    rooms/keyframes.ts            camera stops per room, keyed by section id
+    common/textures.ts      procedural textures (oak, plaster, fabric, cork, metal, ...) + normal maps
+    common/materials.ts     shared materials built on those textures
+    common/Lighting.tsx  Effects.tsx
+    kit/                    RoomShell (cutaway room), doors, windows, furniture, plants
+    rooms/<Room>Scene.tsx   one scene per room
+    rooms/keyframes.ts      camera stops per room, keyed by section id
   store/
     sessionStore.ts         plan, benefits, procedures, chat (sessionStorage only)
     selectors.ts            line items, totals, annual max (derived, never stored)
@@ -206,19 +208,14 @@ If `AWS_BEARER_TOKEN_BEDROCK` is not available to the process, `/api/ai/test`
 returns a clean `502` JSON error instead of a stack trace — the health endpoint
 still works regardless.
 
-## Swapping in real 3D rooms
+## The 3D office
 
-Each room renders `scenes/rooms/PlaceholderRoom.tsx` with its own wall tint. To use a real model (e.g. a Spline or Blender export), load it with `useGLTF` in a new `scenes/rooms/<Room>Scene.tsx` and pick it by room id in `SceneRoot.tsx`. Then tune that room's camera stops in `scenes/rooms/keyframes.ts`. Keyframes are keyed by the `id` of each `<Panel>` section on the page.
+Each route has its own scene in `frontend/src/scenes/rooms/`: Entrance (storefront), Reception, Hallway, Operatory, Imaging, Consult office, Billing and Records. They follow the reference renders: cutaway 5.5 m rooms on a white base, light oak floors, cream-over-sage walls with a maroon and orange rail, white doors with frosted glass, plants, art and clocks.
 
-## Swapping in a real tooth model
-
-Only `frontend/src/components/three/ToothPlaceholder.tsx` changes:
-
-- Keep its outer `<group>`, which owns placement, hover/click events and the animation.
-- Replace `<PlaceholderShape>` with meshes from `useGLTF('/models/teeth.glb')`.
-- Local frame: biting surface at `y = 0`, crown toward `+y`, cheek side toward `+z`. Lower teeth are flipped automatically.
-
-`DentalScene` exposes the props `selectedTooth`, `onToothSelect`, `onToothHover` and `toothStatus`. Only `components/three/` and `scenes/` import Three.js, and both load as lazy chunks.
+- **Textures are drawn in code** (`scenes/common/textures.ts`): oak planks, plaster, terrazzo, tile, fabric, vinyl, cork, brushed metal, quartz, concrete and grass, each with a normal map so grain and seams catch the light. Nothing is downloaded and everything works offline. Signs, screens, the calendar and art are drawn the same way.
+- **Furniture and fixtures** come from `scenes/kit/`, built from rounded boxes in meters. Wall items mount at `-FACE` on the back wall, or on the left wall with `rotY={ON_LEFT}`.
+- **Camera stops** live in `scenes/rooms/keyframes.ts`, keyed by the `id` of each `<Panel>` on the page.
+- **Real models later:** load a `.glb` with `useGLTF` inside a room's scene file. Nothing else needs to change.
 
 ## Backend contract (to build next)
 

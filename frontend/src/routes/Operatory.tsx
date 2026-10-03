@@ -7,7 +7,6 @@ import RoomGate from '../components/RoomGate'
 import RoomIntro from '../components/RoomIntro'
 import ToothInspector from '../components/ToothInspector'
 import ToothPicker from '../components/ToothPicker'
-import ToothStage from '../components/ToothStage'
 import { buttonPrimary, fieldInput, textLink } from '../components/ui'
 import { getTooth } from '../data/teeth'
 import { formatShortDate, formatUsd } from '../lib/format'
@@ -15,7 +14,6 @@ import { useAssistant } from '../lib/useAssistant'
 import { ROOMS_BY_ID } from '../rooms'
 import { useLineItems, useToothHistory, useToothStatus } from '../store/selectors'
 import { useSessionStore } from '../store/sessionStore'
-import { useViewMode } from '../store/settingsStore'
 import { announce, useUiStore } from '../store/uiStore'
 
 const room = ROOMS_BY_ID.operatory
@@ -23,7 +21,6 @@ const room = ROOMS_BY_ID.operatory
 type ReplySource = 'describe' | 'tooth'
 
 export default function Operatory() {
-  const view = useViewMode()
   const ask = useAssistant()
   const isThinking = useUiStore((s) => s.isThinking)
   const { selectedTooth, selectTooth, removeProcedure } = useSessionStore(
@@ -68,9 +65,6 @@ export default function Operatory() {
             />
           )}
           {reply?.source === 'tooth' && <ReplyBox text={reply.text} />}
-          {view === 'immersive' && (
-            <ToothStage selectedTooth={selectedTooth} toothStatus={toothStatus} onToothSelect={selectTooth} />
-          )}
         </Panel>
 
         <Panel id="planned" title="Planned care">
