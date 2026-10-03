@@ -143,11 +143,3 @@
   scrollbar-width: thin;
   scrollbar-color: var(--color-line) transparent;
 }
-
-/* Faint blueprint grid behind the 3D tooth stage. */
-@utility bg-blueprint {
-  background-image:
-    linear-gradient(to right, rgb(31 78 121 / 0.06) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(31 78 121 / 0.06) 1px, transparent 1px);
-  background-size: 32px 32px;
-}
