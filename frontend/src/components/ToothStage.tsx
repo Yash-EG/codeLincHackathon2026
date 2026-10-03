@@ -1,118 +1,77 @@
-import { lazy, Suspense, type ReactNode } from 'react'
+import { lazy, Suspense, useState, type ReactNode } from 'react'
 import { MousePointerClick, Rotate3d } from 'lucide-react'
 import { getTooth } from '../data/teeth'
 import type { ToothStatus } from '../types/domain'
 import SceneErrorBoundary from './SceneErrorBoundary'
-import ToothInspector, { type ToothHistoryEntry } from './ToothInspector'
 
-// Three.js + R3F live in their own chunk so the dashboard paints first.
+// Three.js + R3F live in their own chunk so the page paints first.
 const DentalScene = lazy(() => import('./three/DentalScene'))
 
 interface ToothStageProps {
   selectedTooth: number | null
-  hoveredTooth: number | null
   toothStatus: Partial<Record<number, ToothStatus>>
-  historyFor: (toothNumber: number) => ToothHistoryEntry[]
-  busy: boolean
   onToothSelect: (toothNumber: number | null) => void
-  onToothHover: (toothNumber: number | null) => void
-  onAsk: (prompt: string) => void
 }
 
 function StageMessage({ children }: { children: ReactNode }) {
-  return <div className="absolute inset-0 grid place-items-center text-sm text-ink-400">{children}</div>
+  return <div className="absolute inset-0 grid place-items-center text-sm text-ink-muted">{children}</div>
 }
 
-export default function ToothStage({
-  selectedTooth,
-  hoveredTooth,
-  toothStatus,
-  historyFor,
-  busy,
-  onToothSelect,
-  onToothHover,
-  onAsk,
-}: ToothStageProps) {
-  const selected = getTooth(selectedTooth)
+/**
+ * The 3D dental arch: a pointer shortcut for the tooth picker next to it. Every
+ * tooth it can select is also a button in the picker, so the whole stage is
+ * hidden from assistive tech and the canvas never takes focus.
+ */
+export default function ToothStage({ selectedTooth, toothStatus, onToothSelect }: ToothStageProps) {
+  const [hoveredTooth, setHoveredTooth] = useState<number | null>(null)
   const hovered = getTooth(hoveredTooth)
 
   return (
-    <section
-      aria-label="Interactive dental arch"
-      className="relative min-h-[460px] flex-1 overflow-hidden rounded-2xl border border-ink-800 bg-ink-900"
+    <div
+      aria-hidden="true"
+      className="relative h-[420px] overflow-hidden rounded-2xl border border-line bg-linear-to-b from-sky to-surface"
     >
-      <div aria-hidden="true" className="bg-blueprint pointer-events-none absolute inset-0" />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_55%_at_50%_55%,rgb(61_245_200/0.10),transparent_70%)]"
-      />
+      <div className="bg-blueprint pointer-events-none absolute inset-0" />
 
-      <SceneErrorBoundary
-        fallback={<StageMessage>3D view unavailable. WebGL may be disabled in this browser.</StageMessage>}
-      >
-        <Suspense
-          fallback={
-            <StageMessage>
-              <span className="animate-pulse">Loading 3D arch…</span>
-            </StageMessage>
-          }
-        >
+      <SceneErrorBoundary fallback={<StageMessage>3D view unavailable. Use the tooth buttons instead.</StageMessage>}>
+        <Suspense fallback={<StageMessage>Loading 3D arch…</StageMessage>}>
           <div className="absolute inset-0">
             <DentalScene
               selectedTooth={selectedTooth}
               onToothSelect={onToothSelect}
-              onToothHover={onToothHover}
+              onToothHover={setHoveredTooth}
               toothStatus={toothStatus}
             />
           </div>
         </Suspense>
       </SceneErrorBoundary>
 
-      {/* Overlays (pointer-events only where interactive so orbiting still works) */}
-      <div className="pointer-events-none absolute left-4 top-4 lg:left-5 lg:top-5">
-        <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-ink-400">Treatment map</h2>
-        <p className="mt-1 text-lg font-semibold tracking-tight text-ink-50">Click a tooth to plan care</p>
-      </div>
-
-      {selected && (
-        <div className="absolute right-4 top-4 lg:right-5 lg:top-5">
-          <ToothInspector
-            tooth={selected}
-            status={toothStatus[selected.number]}
-            history={historyFor(selected.number)}
-            disabled={busy}
-            onAsk={onAsk}
-            onClose={() => onToothSelect(null)}
-          />
-        </div>
-      )}
-
-      <div className="pointer-events-none absolute inset-x-4 bottom-4 flex flex-wrap items-end justify-between gap-3 lg:inset-x-5 lg:bottom-5">
-        <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-full border border-ink-800 bg-ink-950/70 px-3.5 py-1.5 text-xs text-ink-300 backdrop-blur">
+      <div className="pointer-events-none absolute inset-x-3 bottom-3 flex flex-wrap items-end justify-between gap-2">
+        <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-full border border-line bg-surface/90 px-3.5 py-1.5 text-xs text-ink">
           <li className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-viz-planned" aria-hidden="true" /> Care planned
+            <span className="size-2 rounded-full bg-viz-planned" /> Care planned
           </li>
           <li className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-viz-treated" aria-hidden="true" /> Treated in 2026
+            <span className="size-2 rounded-full bg-viz-treated" /> Treated this year
           </li>
           <li className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-accent" aria-hidden="true" /> Selected
+            <span className="size-2 rounded-full bg-accent" /> Selected
           </li>
         </ul>
-        <p className="flex items-center gap-1.5 rounded-full border border-ink-800 bg-ink-950/70 px-3.5 py-1.5 text-xs text-ink-300 backdrop-blur">
+        <p className="flex items-center gap-1.5 rounded-full border border-line bg-surface/90 px-3.5 py-1.5 text-xs text-ink">
           {hovered ? (
             <>
-              <MousePointerClick className="size-3.5 text-accent" aria-hidden="true" />
-              <span className="font-medium text-ink-100">#{hovered.number}</span> {hovered.name}
+              <MousePointerClick className="size-3.5 text-primary" />
+              <span className="font-semibold">#{hovered.number}</span> {hovered.name}
             </>
           ) : (
             <>
-              <Rotate3d className="size-3.5 text-ink-400" aria-hidden="true" />
+              <Rotate3d className="size-3.5 text-ink-muted" />
               Drag to orbit · scroll to zoom
             </>
           )}
         </p>
       </div>
-    </section>
+    </div>
   )
 }

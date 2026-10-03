@@ -1,4 +1,4 @@
-import { Sparkles, X } from 'lucide-react'
+import { CalendarClock, Check, Sparkles, X } from 'lucide-react'
 import type { ToothInfo } from '../data/teeth'
 import type { ToothStatus } from '../types/domain'
 
@@ -25,79 +25,74 @@ const QUICK_ACTIONS: Array<{ label: string; prompt: (n: number) => string }> = [
   { label: 'Implant', prompt: (n) => `How much is an implant for tooth #${n}?` },
 ]
 
-/** Floating panel over the 3D stage for the tooth the user clicked. */
+/** Details and one-click "what would it cost" questions for the selected tooth. */
 export default function ToothInspector({ tooth, status, history, disabled, onAsk, onClose }: ToothInspectorProps) {
   return (
-    <div
-      role="dialog"
-      aria-label={`Tooth ${tooth.number}, ${tooth.name}`}
-      className="w-72 rounded-2xl border border-ink-700 bg-ink-900/90 p-4 shadow-2xl shadow-black/50 backdrop-blur-md"
-    >
+    <section aria-labelledby="tooth-inspector-title" className="rounded-2xl border border-line bg-surface p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-medium uppercase tracking-[0.14em] text-ink-400">Tooth</p>
-          <p className="mt-0.5 flex items-baseline gap-2">
-            <span className="text-3xl font-semibold tracking-tight text-ink-50">#{tooth.number}</span>
-            {status && (
-              <span
-                className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ${
-                  status === 'planned' ? 'text-ink-100 ring-viz-planned/50' : 'text-ink-100 ring-viz-treated/50'
-                }`}
-              >
-                <span
-                  className={`size-1.5 rounded-full ${status === 'planned' ? 'bg-viz-planned' : 'bg-viz-treated'}`}
-                  aria-hidden="true"
-                />
-                {status === 'planned' ? 'Care planned' : 'Treated this year'}
-              </span>
-            )}
-          </p>
-          <p className="text-sm text-ink-300">{tooth.name}</p>
+          <h3 id="tooth-inspector-title" className="flex flex-wrap items-baseline gap-x-2 text-ink">
+            <span className="text-2xl font-semibold tracking-tight">Tooth #{tooth.number}</span>
+            <span className="text-sm text-ink-muted">{tooth.name}</span>
+          </h3>
+          {status && (
+            <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-ink">
+              {status === 'planned' ? (
+                <CalendarClock className="size-4 text-viz-planned" aria-hidden="true" />
+              ) : (
+                <Check className="size-4 text-viz-treated" aria-hidden="true" />
+              )}
+              {status === 'planned' ? 'Care planned' : 'Treated this plan year'}
+            </p>
+          )}
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="rounded-lg p-1 text-ink-400 transition hover:bg-ink-800 hover:text-ink-100 focus-visible:outline-2 focus-visible:outline-accent"
-          aria-label="Close tooth details"
+          className="grid size-10 shrink-0 place-items-center rounded-lg text-ink-muted transition hover:bg-cream hover:text-ink"
+          aria-label="Clear selected tooth"
         >
-          <X className="size-4" />
+          <X className="size-4" aria-hidden="true" />
         </button>
       </div>
 
       {history.length > 0 && (
-        <ul className="mt-3 space-y-1.5 border-t border-ink-800 pt-3">
+        <ul className="mt-3 space-y-1.5 border-t border-line pt-3" aria-label={`History for tooth ${tooth.number}`}>
           {history.map((entry) => (
-            <li key={`${entry.kind}-${entry.label}-${entry.detail}`} className="flex items-center gap-2 text-xs">
-              <span
-                className={`size-1.5 shrink-0 rounded-full ${entry.kind === 'planned' ? 'bg-viz-planned' : 'bg-viz-treated'}`}
-                aria-hidden="true"
-              />
-              <span className="text-ink-100">{entry.label}</span>
-              <span className="ml-auto text-ink-400">{entry.detail}</span>
+            <li key={`${entry.kind}-${entry.label}-${entry.detail}`} className="flex items-center gap-2 text-sm">
+              {entry.kind === 'planned' ? (
+                <CalendarClock className="size-3.5 shrink-0 text-viz-planned" aria-hidden="true" />
+              ) : (
+                <Check className="size-3.5 shrink-0 text-viz-treated" aria-hidden="true" />
+              )}
+              <span className="sr-only">{entry.kind === 'planned' ? 'Planned:' : 'Treated:'}</span>
+              <span className="text-ink">{entry.label}</span>
+              <span className="ml-auto text-ink-muted">{entry.detail}</span>
             </li>
           ))}
         </ul>
       )}
 
-      <div className="mt-3 border-t border-ink-800 pt-3">
-        <p className="mb-2 flex items-center gap-1.5 text-xs text-ink-400">
-          <Sparkles className="size-3.5 text-accent" aria-hidden="true" />
+      <div className="mt-3 border-t border-line pt-3">
+        <p className="mb-2 flex items-center gap-1.5 text-sm text-ink-muted">
+          <Sparkles className="size-4 text-primary" aria-hidden="true" />
           Ask what it would cost
         </p>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-2">
           {QUICK_ACTIONS.map((action) => (
             <button
               key={action.label}
               type="button"
               disabled={disabled}
               onClick={() => onAsk(action.prompt(tooth.number))}
-              className="rounded-full border border-ink-700 bg-ink-800 px-2.5 py-1 text-xs font-medium text-ink-100 transition hover:border-accent/60 hover:text-accent focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-10 rounded-full border border-control bg-surface px-3.5 py-1.5 text-sm font-medium text-ink transition hover:border-primary hover:text-primary disabled:cursor-wait disabled:opacity-60"
             >
               {action.label}
+              <span className="sr-only"> on tooth {tooth.number}</span>
             </button>
           ))}
         </div>
       </div>
-    </div>
+    </section>
   )
 }

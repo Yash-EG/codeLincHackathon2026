@@ -59,10 +59,10 @@ const SHAPES: Record<ToothType, ShapeSpec> = {
 
 const ENAMEL = '#eef2f4'
 const GLOW = {
-  selected: '#3df5c8',
-  planned: '#c28405',
-  treated: '#4f8ff0',
-  hover: '#9fb3c8',
+  selected: '#0e8a6c',
+  planned: '#2563a6',
+  treated: '#7a5cc7',
+  hover: '#6f8fae',
 } as const
 
 // Shared across all teeth (never disposed: they live as long as the scene chunk).
@@ -200,9 +200,9 @@ export default function ToothPlaceholder({
 
       {hovered && (
         <Html position={[0, labelY, 0]} center zIndexRange={[30, 0]} style={{ pointerEvents: 'none' }}>
-          <div className="whitespace-nowrap rounded-lg border border-ink-700 bg-ink-900/90 px-2.5 py-1 text-xs shadow-xl backdrop-blur">
-            <span className="font-semibold text-ink-50">#{tooth.number}</span>{' '}
-            <span className="text-ink-300">{tooth.name}</span>
+          <div className="whitespace-nowrap rounded-lg border border-line bg-surface px-2.5 py-1 text-xs shadow-lg">
+            <span className="font-semibold text-ink">#{tooth.number}</span>{' '}
+            <span className="text-ink-muted">{tooth.name}</span>
           </div>
         </Html>
       )}
