@@ -91,13 +91,13 @@ export default function DentalScene({
       onPointerMissed={() => onToothSelect(null)}
     >
       {/* Fog matches the stage panel so the back molars fade into the card. */}
-      <fog attach="fog" args={['#0b0f14', 8.5, 15]} />
+      <fog attach="fog" args={['#e9eef0', 8.5, 15]} />
 
-      {/* Lighting: cool sky fill, warm-white key, mint rim from behind the arch. */}
-      <hemisphereLight args={['#e6f6ff', '#1a1f27', 0.9]} />
+      {/* Lighting: sky fill, warm-white key, soft mint rim from behind the arch. */}
+      <hemisphereLight args={['#f4f8ff', '#b9c9b0', 1.1]} />
       <directionalLight position={[3, 6, 5]} intensity={2.2} />
       <directionalLight position={[-4, -3, 4]} intensity={0.6} color="#9fb4ff" />
-      <pointLight position={[0, 0.4, -3.2]} intensity={22} distance={12} color="#3df5c8" />
+      <pointLight position={[0, 0.4, -3.2]} intensity={14} distance={12} color="#d3efe3" />
 
       <group rotation-x={-ARCH_TILT}>
         <Gum arch="upper" />
@@ -108,7 +108,7 @@ export default function DentalScene({
         {renderArch('lower')}
       </group>
 
-      <ContactShadows position={[0, -1.8, 0]} opacity={0.55} scale={10} blur={2.6} far={3.5} resolution={512} color="#000000" />
+      <ContactShadows position={[0, -1.8, 0]} opacity={0.35} scale={10} blur={2.6} far={3.5} resolution={512} color="#1f2a33" />
 
       <OrbitControls
         makeDefault

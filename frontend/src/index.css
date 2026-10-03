@@ -1,69 +1,153 @@
 @import "tailwindcss";
 
-/* High-contrast dark theme. Every color the UI uses is a token here. */
+/*
+ * Light "dental office" theme: blue, mint and sage. Every color the UI uses is
+ * a token here (Tailwind v4 reads them from @theme; there is no tailwind.config.js).
+ *
+ * Contrast (WCAG 2.2 AA), measured on cream #FBF8F1 and on the worst-case
+ * frosted panel (88% cream over a pure-black scene):
+ *   ink          13.8:1 / 10.5:1      ink-muted   6.7:1 / 5.1:1
+ *   primary       8.2:1 /  6.2:1      warning     6.4:1 / 4.9:1
+ *   danger        6.1:1 /  4.6:1      success     6.0:1
+ * accent and the viz-* colors are for marks only (>= 3:1), never for small text.
+ * mint / sage / sky are backgrounds: dark text only, never white text.
+ */
 @theme {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, monospace;
 
-  --color-ink-950: #05070a; /* page */
-  --color-ink-900: #0b0f14; /* panels */
-  --color-ink-850: #10151c;
-  --color-ink-800: #161c25; /* raised surfaces */
-  --color-ink-700: #232b36; /* hairlines */
-  --color-ink-600: #364150;
-  --color-ink-500: #5b6675;
-  --color-ink-400: #7d8897;
-  --color-ink-300: #a3adbb; /* muted text */
-  --color-ink-100: #e8edf3;
-  --color-ink-50: #f7f9fb;
+  /* Text */
+  --color-ink: #1f2a33;
+  --color-ink-muted: #4a5a66;
+  --color-primary: #1f4e79; /* links, buttons, focus ring (white on it: 8.7:1) */
+  --color-primary-strong: #1b3a5c; /* hover / pressed */
 
-  /* UI chrome: bright, used for focus, selection, icons, status chips. */
-  --color-accent: #3df5c8;  /* electric mint */
-  --color-warning: #fbbf24; /* amber status (always paired with an icon + label) */
-  --color-danger: #fb7185;  /* rose status: over max / not covered */
+  /* Status text: always paired with an icon and a label */
+  --color-success: #1e6b52;
+  --color-warning: #8a4b08;
+  --color-danger: #b4233c;
 
-  /* Data marks: stepped into the dark-mode lightness band (OKLCH L 0.48-0.67)
-     and validated for CVD separation against ink-900 with the dataviz checker. */
-  --color-viz-plan: #10a985;    /* insurance pays / maximum used */
-  --color-viz-planned: #c28405; /* planned spend (also hatched) */
-  --color-viz-you: #8b7cf6;     /* you pay */
-  --color-viz-treated: #4f8ff0; /* treated this plan year */
+  /* Non-text accent: progress fills and large marks (3.6:1 on the track) */
+  --color-accent: #0e8a6c;
+
+  /* Walls and backgrounds */
+  --color-mint: #d3efe3;
+  --color-sage: #c9d6c0;
+  --color-sky: #d6e6f2;
+
+  /* Surfaces and lines */
+  --color-surface: #fbf8f1; /* warm white */
+  --color-cream: #f5efe3;
+  --color-track: #e4ece6; /* empty part of a meter */
+  --color-line: #ddd5c6; /* decorative hairlines */
+  --color-control: #66737f; /* input and control borders: 4.6:1 */
+
+  /* Data marks, validated with the dataviz checker on the cream surface
+     (lightness band, chroma, CVD separation, >= 3:1). "Planned" is also hatched. */
+  --color-viz-plan: #0e8a6c; /* insurance pays / maximum used */
+  --color-viz-planned: #2563a6; /* planned spend */
+  --color-viz-you: #b4632a; /* you pay */
+  --color-viz-treated: #7a5cc7; /* treated this plan year */
+}
+
+/* data-view is set on <html> by AppShell: the same pages, with or without the 3D layer. */
+@custom-variant immersive (&:where(:root[data-view="immersive"] *));
+@custom-variant traditional (&:where(:root:not([data-view="immersive"]) *));
+/* Short viewports (e.g. a laptop at 200% zoom): fixed chrome becomes static. */
+@custom-variant short (@media (max-height: 30rem));
+
+:root {
+  /* Frosted glass panels. Blur does not count toward contrast, so 0.88 is the
+     floor: every text token stays AA even if the scene behind is pure black. */
+  --panel-bg: rgb(251 248 241 / 0.88);
+  --page-bg: var(--color-mint);
+}
+
+:root:not([data-view="immersive"]) {
+  --panel-bg: var(--color-surface);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --panel-bg: var(--color-surface);
+  }
 }
 
 @layer base {
-  html,
-  body,
-  #root {
-    height: 100%;
+  html {
+    /* Sticky header and fixed max bar never cover focused or scrolled-to content (WCAG 2.4.11). */
+    scroll-padding-top: calc(var(--header-h, 0px) + 1rem);
+    scroll-padding-bottom: calc(var(--maxbar-h, 0px) + 1rem);
   }
 
   body {
-    @apply bg-ink-950 font-sans text-ink-100 antialiased;
+    @apply font-sans text-ink antialiased;
+    background: var(--page-bg);
   }
 
   ::selection {
-    background: color-mix(in oklab, var(--color-accent) 35%, transparent);
+    background: color-mix(in oklab, var(--color-primary) 22%, transparent);
   }
+
+  a {
+    text-underline-offset: 3px;
+  }
+
+  @media (max-height: 30rem) {
+    html {
+      scroll-padding: 1rem;
+    }
+  }
+}
+
+/* Two-color focus ring (navy outline + white gap) that shows on any background,
+   including the 3D scene. Unlayered so no utility can switch it off. */
+:focus-visible:not([tabindex="-1"]) {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+[tabindex="-1"]:focus {
+  outline: none;
+}
+
+@layer components {
+  /* One stop on the camera path. In immersive mode each stop gets room to scroll. */
+  .room-stop:where(:root[data-view="immersive"] *) {
+    display: flex;
+    min-height: 72svh;
+    flex-direction: column;
+    justify-content: center;
+  }
+}
+
+@utility panel {
+  border: 1px solid var(--color-line);
+  border-radius: 1.5rem;
+  background: var(--panel-bg);
+  box-shadow: 0 12px 32px -16px rgb(31 42 51 / 0.28);
+  backdrop-filter: blur(14px) saturate(1.1);
 }
 
 /* Diagonal hatching used for "planned" spend on the annual-max bar. */
 @utility bg-stripes {
   background-image: repeating-linear-gradient(
     -45deg,
-    rgb(0 0 0 / 0.28) 0 5px,
+    rgb(255 255 255 / 0.35) 0 5px,
     transparent 5px 10px
   );
 }
 
 @utility scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-ink-700) transparent;
+  scrollbar-color: var(--color-line) transparent;
 }
 
-/* Faint blueprint grid behind the 3D stage. */
+/* Faint blueprint grid behind the 3D tooth stage. */
 @utility bg-blueprint {
   background-image:
-    linear-gradient(to right, rgb(255 255 255 / 0.035) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(255 255 255 / 0.035) 1px, transparent 1px);
+    linear-gradient(to right, rgb(31 78 121 / 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(31 78 121 / 0.06) 1px, transparent 1px);
   background-size: 32px 32px;
 }

@@ -1,4 +1,4 @@
-import { formatUsd } from '../../lib/format'
+import { formatUsd } from '../lib/format'
 
 interface SplitBarProps {
   planPays: number

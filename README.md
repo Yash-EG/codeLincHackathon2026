@@ -8,11 +8,34 @@ Codelinc Hackathon 2026. Describe the dental care you need in plain language, an
 
 | Layer | Tech |
 | --- | --- |
-| Frontend | React 19, TypeScript, Vite, Tailwind CSS v4 |
-| 3D | Three.js via React Three Fiber v9 + drei |
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, React Router 7, Zustand |
+| 3D | Three.js via React Three Fiber v9 + drei, GSAP ScrollTrigger, N8AO (postprocessing) |
 | Backend (next) | Java / Spring Boot |
 | Database | Neon (serverless Postgres) |
 | AI | Amazon Bedrock |
+
+## How the site is built
+
+The site is a dental office you walk through, one route per room. **The HTML is the real site.** Every heading, form, table and door is a normal element. The 3D office is a background layer behind it: `aria-hidden`, never focusable, and driven by native page scroll. It never uses `<ScrollControls>`, which takes over scrolling.
+
+| Route | Room | What happens there |
+| --- | --- | --- |
+| `/` | Entrance | Landing page |
+| `/reception` | Reception | Check in a plan (sample or manual entry) |
+| `/hallway` | Hallway | Every room, as door cards |
+| `/operatory` | Operatory | Describe care in words, or pick a tooth (buttons + 3D arch) |
+| `/imaging` | Imaging | Coverage tiers, frequency limits, fine print in plain English |
+| `/consult` | Consult office | What to do this plan year vs. after Jan 1 |
+| `/billing` | Billing | What you pay, line items, in- vs out-of-network |
+| `/records` | Records | Annual maximum, claims, reminders (`.ics` export) |
+
+Every room shares a persistent shell: a skip link, a header with the **Directory** and the view toggle, an always-visible **annual max bar**, and **Ask AI** (a native modal `<dialog>`).
+
+**Two views of the same pages:**
+- **3D office (immersive):** text sits on frosted panels (at least 88% opaque, so contrast holds over any scene), and the camera glides between keyframes as you scroll.
+- **Traditional:** the 3D code is never downloaded, and panels are solid with no motion. This view turns on automatically when the OS asks for reduced motion or WebGL is unavailable. Either view can be picked in the header.
+
+**Accessibility target:** WCAG 2.2 AA. The skip link, one `<h1>` per room, and focus moving to that `<h1>` on room change are built in. Arrivals are announced in a polite live region. Focus rings use two colors. `scroll-padding` keeps the fixed bars from covering focused content. Errors are linked to their form fields. The tooth map has a full button alternative.
 
 ## Repository layout
 
@@ -20,21 +43,32 @@ Codelinc Hackathon 2026. Describe the dental care you need in plain language, an
 db/migrations/
   V1__schema.sql            tables + views (Flyway naming)
   V2__seed_mock_data.sql    3 fictional plans, 28 CDT codes, 3 demo users
-frontend/
-  src/App.tsx               state hub: 3D selection <-> chat <-> breakdown <-> progress bar
-  src/components/
-    three/                  ALL Three.js code lives here (lazy-loaded chunk)
-      DentalScene.tsx       Canvas, camera, lights, OrbitControls, arch layout
-      ToothPlaceholder.tsx  one clickable tooth, the swap point for real models
-      archLayout.ts         parabolic arch math (Universal numbering 1-32)
-    AnnualMaxProgress.tsx   used / planned / unused meter + expiring-benefits flag
-    ToothStage.tsx          3D stage card + overlays
-    ToothInspector.tsx      selected-tooth panel with quick "what would it cost" actions
-    sidebar/                AI chat, cost breakdown, plan-language translation
-  src/lib/estimate.ts       coinsurance / deductible / annual-max estimator
-  src/lib/mockAssistant.ts  offline stand-in for the Bedrock endpoint
-  src/data/mockData.ts      demo user data that mirrors the SQL seed
+frontend/src/
+  rooms.ts                  the room directory (paths, names, descriptions, prerequisites)
+  router.tsx                one route per room under the AppShell layout
+  routes/                   room pages: real, accessible content
+  components/layout/        AppShell, Header, Directory, ViewToggle, MaxBar, AskAiDialog, SkipLink, LiveRegion
+  components/               Panel, RoomIntro, DoorCard, ToothPicker, CheckInForm, AnnualMaxProgress, ...
+  components/three/         the interactive 3D tooth arch (Operatory)
+  scenes/                   the background 3D office (lazy chunk)
+    common/SceneRoot.tsx    one persistent <Canvas> at z-index -1
+    common/CameraRig.tsx    damped camera along a curve through the room's keyframes
+    common/useScrollKeyframes.ts  ScrollTrigger per [data-camera] section -> camera progress
+    common/Lighting.tsx  Effects.tsx  materials.ts
+    rooms/PlaceholderRoom.tsx     clay diorama, the drop-in point for Spline / glTF rooms
+    rooms/keyframes.ts            camera stops per room, keyed by section id
+  store/
+    sessionStore.ts         plan, benefits, procedures, chat (sessionStorage only)
+    selectors.ts            line items, totals, annual max (derived, never stored)
+    settingsStore.ts        view mode (localStorage)
+    uiStore.ts  sceneStore.ts
+  a11y/                     route focus, reduced motion, WebGL check, fixed-bar height vars
+  lib/estimate.ts           coinsurance / deductible / annual-max estimator
+  lib/mockAssistant.ts      offline stand-in for the Bedrock endpoint
+  data/mockData.ts          demo user data that mirrors the SQL seed
 ```
+
+Theme colors are tokens in `src/index.css` (`@theme`; Tailwind v4 has no `tailwind.config.js`). The palette is blue, mint and sage, and each text pair's contrast ratio is noted next to it.
 
 ## Run the frontend
 
@@ -79,6 +113,10 @@ Schema highlights:
   - `v_enrollment_benefit_summary` gives used, planned and remaining maximum, deductible progress, days left and the `benefits_expiring_soon` flag. This drives the progress bar.
 - **Spring Boot:** the files use Flyway naming. Point Flyway at them with `spring.flyway.locations=filesystem:../db/migrations`.
 
+## Swapping in real 3D rooms
+
+Each room renders `scenes/rooms/PlaceholderRoom.tsx` with its own wall tint. To use a real model (e.g. a Spline or Blender export), load it with `useGLTF` in a new `scenes/rooms/<Room>Scene.tsx` and pick it by room id in `SceneRoot.tsx`. Then tune that room's camera stops in `scenes/rooms/keyframes.ts`. Keyframes are keyed by the `id` of each `<Panel>` section on the page.
+
 ## Swapping in a real tooth model
 
 Only `frontend/src/components/three/ToothPlaceholder.tsx` changes:
@@ -87,7 +125,7 @@ Only `frontend/src/components/three/ToothPlaceholder.tsx` changes:
 - Replace `<PlaceholderShape>` with meshes from `useGLTF('/models/teeth.glb')`.
 - Local frame: biting surface at `y = 0`, crown toward `+y`, cheek side toward `+z`. Lower teeth are flipped automatically.
 
-`DentalScene` exposes the props `selectedTooth`, `onToothSelect`, `onToothHover` and `toothStatus`. Nothing outside `components/three/` imports Three.js.
+`DentalScene` exposes the props `selectedTooth`, `onToothSelect`, `onToothHover` and `toothStatus`. Only `components/three/` and `scenes/` import Three.js, and both load as lazy chunks.
 
 ## Backend contract (to build next)
 
@@ -101,7 +139,10 @@ Under the hood, Bedrock maps the free text to CDT codes using `cdt_procedures.co
 
 ## Demo script
 
-1. The progress bar shows Maya has **$1,004 left**, with **$303 that would expire unused** even after her planned crown and filling.
-2. Click **tooth #3**, then **Crown**. The plan goes over the maximum, and the assistant suggests moving part of the work past Jan 1.
-3. Ask **"Can I get another cleaning this year?"** Both 2026 cleanings are used, so it recommends early January, when a cleaning is covered at 100%.
-4. Open **Cost breakdown** and toggle **Out-of-network** to compare costs. Scroll to **Your plan, decoded** for the jargon translations.
+1. **Entrance → Walk in → Reception.** Choose **Use the sample plan**. The max bar now shows Maya's 2026 maximum: used, pending and left.
+2. **Operatory.** Pick **tooth #3** and choose **Crown**. The plan goes over the maximum, and the assistant suggests moving part of the work past Jan 1.
+3. **Billing.** See what you pay. Switch to **Out-of-network** to compare.
+4. **Consult office.** See what to do before Dec 31 and what waits for the new plan year.
+5. **Records.** See the annual maximum and claims, then **Add to my calendar (.ics)**.
+6. **Ask AI** (bottom right in every room): *"Can I get another cleaning this year?"*
+7. Switch the header to **Traditional** to show the same pages with no 3D.
