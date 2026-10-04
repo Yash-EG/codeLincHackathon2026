@@ -5,7 +5,7 @@
 
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
-import { CLAIMS, SAMPLE_PLANS, SAMPLE_PROCEDURE_INPUT, type SamplePlanId } from '../data/mockData'
+import { CLAIMS, PROVIDERS, SAMPLE_PLANS, SAMPLE_PROCEDURE_INPUT, type SamplePlanId } from '../data/mockData'
 import { daysUntil, formatUsd } from '../lib/format'
 import type {
   AiAnalysis,
@@ -18,6 +18,7 @@ import type {
   JargonTranslation,
   NetworkTier,
   ProcedureRequest,
+  Provider,
   TreatmentPlanItem,
 } from '../types/domain'
 
@@ -44,6 +45,8 @@ export interface SessionData {
   /** Procedures being priced for this plan year (the cost breakdown). */
   procedures: ProcedureRequest[]
   translations: JargonTranslation[]
+  /** In-network and nearby out-of-network dentists for the checked-in plan (none for typed-in plans). */
+  providers: Provider[]
   network: NetworkTier
   selectedTooth: number | null
   /** What the user typed in "Describe your care". */
@@ -82,6 +85,7 @@ const EMPTY: SessionData = {
   treatmentPlan: [],
   procedures: [],
   translations: [],
+  providers: [],
   network: 'IN_NETWORK',
   selectedTooth: null,
   procedureInput: SAMPLE_PROCEDURE_INPUT,
@@ -116,6 +120,7 @@ export const useSessionStore = create<SessionState>()(
           benefits: sample.benefits,
           claims: CLAIMS,
           translations: sample.translations,
+          providers: PROVIDERS,
           messages: [greetingFor(sample.benefits)],
         })
       },
@@ -213,8 +218,8 @@ export const useSessionStore = create<SessionState>()(
     }),
     {
       name: 'molarity-session',
-      // v2: the challenge's sample plan and the assistant's analysis. Older sessions start over.
-      version: 2,
+      // v3: adds the provider directory. Older sessions start over.
+      version: 3,
       migrate: () => EMPTY as SessionState,
       storage: createJSONStorage(() => sessionStorage),
     },

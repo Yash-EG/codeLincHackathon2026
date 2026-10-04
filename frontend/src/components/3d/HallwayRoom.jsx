@@ -10,6 +10,7 @@ export const DOORS = [
   { id: "reception", plaque: "1", wall: "left", u: 0.6 },
   { id: "operatory", plaque: "4", wall: "back", u: -1.3 },
   { id: "consult",   plaque: "5", wall: "back", u: 1.9 },
+  { id: "providers", plaque: "8", wall: "back", u: 0.3 },
 ];
 
 /** One stop per content <section> on /hallway. */
@@ -37,7 +38,7 @@ export default function HallwayRoom({ highlight, openDoor, onSelect, doors = DOO
       <OnWall wall="left" u={-1.2} y={2.35}>
         <Clock r={0.21} />
       </OnWall>
-      <OnWall wall="back" u={0.3} y={1.9}>
+      <OnWall wall="left" u={-1.45} y={1.5}>
         <WallArt w={0.6} h={0.82} />
       </OnWall>
 

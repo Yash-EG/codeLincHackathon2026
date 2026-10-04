@@ -34,6 +34,7 @@ import ImagingRoom, { STOPS as IMAGING_STOPS, DOORS as IMAGING_DOORS } from "./I
 import ConsultRoom, { STOPS as CONSULT_STOPS, DOORS as CONSULT_DOORS } from "./ConsultRoom";
 import BillingRoom, { STOPS as BILLING_STOPS, DOORS as BILLING_DOORS } from "./BillingRoom";
 import RecordsRoom, { STOPS as RECORDS_STOPS, DOORS as RECORDS_DOORS } from "./RecordsRoom";
+import ProvidersRoom, { STOPS as PROVIDERS_STOPS, DOORS as PROVIDERS_DOORS } from "./ProvidersRoom";
 
 /** Every room: its component, camera stops (one per page section) and doors. Keys are route ids. */
 export const ROOMS = {
@@ -45,6 +46,7 @@ export const ROOMS = {
   consult: { Room: ConsultRoom, stops: CONSULT_STOPS, doors: CONSULT_DOORS },
   billing: { Room: BillingRoom, stops: BILLING_STOPS, doors: BILLING_DOORS },
   records: { Room: RecordsRoom, stops: RECORDS_STOPS, doors: RECORDS_DOORS },
+  providers: { Room: ProvidersRoom, stops: PROVIDERS_STOPS, doors: PROVIDERS_DOORS },
 };
 
 /** The prototype's eight stations, now a room + page section + focal object each. */

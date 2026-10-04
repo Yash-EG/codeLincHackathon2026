@@ -18,6 +18,7 @@ import type {
   CoverageTier,
   InsurancePlan,
   JargonTranslation,
+  Provider,
 } from '../types/domain'
 import { daysUntil } from '../lib/format'
 
@@ -199,3 +200,19 @@ export const SAMPLE_PLANS: Record<SamplePlanId, SamplePlan> = {
     blurb: 'A richer plan: 90% basic, 60% major, same claims.',
   },
 }
+
+/**
+ * Provider directory for the sample plans (both Lincoln plans share one
+ * network). Fictional offices and 555 numbers; in-network status is what the
+ * plan would report. Mirrors a future `providers` API response.
+ */
+export const PROVIDERS: Provider[] = [
+  { id: 'prov-1', name: 'Dr. Elena Marsh, DDS', practiceName: 'Riverside Family Dental', specialty: 'General dentistry', inNetwork: true, address: '812 Birchwood Ave', city: 'Columbus', state: 'OH', zip: '43215', distanceMiles: 1.2, phone: '(614) 555-0142', acceptingNewPatients: true, rating: 4.8, reviewCount: 212 },
+  { id: 'prov-2', name: 'Dr. Priya Nair, DMD', practiceName: 'Downtown Dental Studio', specialty: 'General dentistry', inNetwork: true, address: '45 Market St, Suite 300', city: 'Columbus', state: 'OH', zip: '43215', distanceMiles: 2.6, phone: '(614) 555-0188', acceptingNewPatients: false, rating: 4.6, reviewCount: 164 },
+  { id: 'prov-3', name: 'Dr. Marcus Lee, DDS', practiceName: 'Grandview Endodontics', specialty: 'Endodontics (root canals)', inNetwork: true, address: '1290 Grandview Rd', city: 'Grandview Heights', state: 'OH', zip: '43212', distanceMiles: 3.9, phone: '(614) 555-0210', acceptingNewPatients: true, rating: 4.9, reviewCount: 98 },
+  { id: 'prov-4', name: 'Dr. Sofia Alvarez, DMD', practiceName: 'Northgate Oral Surgery', specialty: 'Oral surgery', inNetwork: true, address: '7700 Sinclair Rd', city: 'Columbus', state: 'OH', zip: '43235', distanceMiles: 6.1, phone: '(614) 555-0266', acceptingNewPatients: true, rating: 4.7, reviewCount: 143 },
+  { id: 'prov-5', name: 'Dr. James Okafor, DDS', practiceName: 'Bexley Dental Group', specialty: 'General dentistry', inNetwork: true, address: '2301 E Main St', city: 'Bexley', state: 'OH', zip: '43209', distanceMiles: 4.4, phone: '(614) 555-0319', acceptingNewPatients: true, rating: 4.5, reviewCount: 87 },
+  { id: 'prov-6', name: 'Dr. Hannah Weiss, DMD', practiceName: 'Clintonville Smiles', specialty: 'Prosthodontics (crowns & implants)', inNetwork: true, address: '3540 N High St', city: 'Columbus', state: 'OH', zip: '43214', distanceMiles: 5.0, phone: '(614) 555-0377', acceptingNewPatients: false, rating: 4.8, reviewCount: 121 },
+  { id: 'prov-7', name: 'Dr. Robert Chen, DDS', practiceName: 'Easton Modern Dentistry', specialty: 'General dentistry', inNetwork: false, address: '4000 Worth Ave', city: 'Columbus', state: 'OH', zip: '43219', distanceMiles: 7.8, phone: '(614) 555-0401', acceptingNewPatients: true, rating: 4.4, reviewCount: 56 },
+  { id: 'prov-8', name: 'Dr. Amara Diallo, DMD', practiceName: 'Upper Arlington Pediatric & Family Dental', specialty: 'General dentistry', inNetwork: false, address: '1515 Lane Ave', city: 'Upper Arlington', state: 'OH', zip: '43221', distanceMiles: 8.3, phone: '(614) 555-0455', acceptingNewPatients: true, rating: 4.9, reviewCount: 189 },
+]

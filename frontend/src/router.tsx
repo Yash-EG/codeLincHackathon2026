@@ -7,6 +7,7 @@ import Hallway from './routes/Hallway'
 import Imaging from './routes/Imaging'
 import NotFound from './routes/NotFound'
 import Operatory from './routes/Operatory'
+import Providers from './routes/Providers'
 import Reception from './routes/Reception'
 import Records from './routes/Records'
 
@@ -22,6 +23,7 @@ export const router = createBrowserRouter([
       { path: 'imaging', element: <Imaging /> },
       { path: 'consult', element: <Consult /> },
       { path: 'billing', element: <Billing /> },
+      { path: 'providers', element: <Providers /> },
       { path: 'records', element: <Records /> },
       { path: '*', element: <NotFound /> },
     ],
