@@ -4,6 +4,7 @@
 // it the call answers 503 and the page keeps the sample plan.
 
 import type { BenefitSummary, CoverageClass, CoverageTier, InsurancePlan, NetworkTier } from '../types/domain'
+import { errorMessage } from './apiError'
 import { daysUntil } from './format'
 
 /** Mirrors MemberSummary.CoverageRule. */
@@ -47,23 +48,9 @@ export async function fetchMembers(signal?: AbortSignal): Promise<Member[]> {
     res = await fetch('/api/members', { signal, headers: { Accept: 'application/json' } })
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') throw err
-    throw new MembersError(0, 'The server could not be reached.')
+    throw new MembersError(0, "The backend couldn't be reached. Check that it's running.")
   }
-  if (!res.ok) {
-    // A bare 5xx with no JSON body is a proxy or gateway talking (Vite answers 500 when the
-    // backend isn't running), not the backend itself.
-    let message =
-      res.status >= 500
-        ? `The backend didn't answer (HTTP ${res.status}). Check that it's running.`
-        : `The server answered ${res.status}.`
-    try {
-      const body = (await res.json()) as { message?: unknown }
-      if (typeof body.message === 'string' && body.message) message = body.message
-    } catch {
-      // Not JSON (a proxy error page, say): keep the status message.
-    }
-    throw new MembersError(res.status, message)
-  }
+  if (!res.ok) throw new MembersError(res.status, await errorMessage(res))
   const data: unknown = await res.json()
   if (!Array.isArray(data)) throw new MembersError(res.status, 'The member list was not in the expected format.')
   return data as Member[]

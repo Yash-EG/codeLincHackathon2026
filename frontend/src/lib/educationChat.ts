@@ -9,6 +9,8 @@
 // There is no built-in fallback: if the backend can't answer, askEducation throws and the
 // chat says so, rather than inventing an answer.
 
+import { apiFetch, errorMessage } from './apiError'
+
 /** Mirrors the backend EducationIntent enum. */
 export type EducationIntent =
   | 'GENERAL_DEFINITION'
@@ -31,12 +33,12 @@ export interface EducationChatResponse {
 
 /** Ask the education chatbot (Amazon Bedrock via the backend). Throws if the backend can't answer. */
 export async function askEducation(message: string): Promise<EducationChatResponse> {
-  const res = await fetch('/api/education/chat', {
+  const res = await apiFetch('/api/education/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message }),
   })
-  if (!res.ok) throw new Error(`education chat failed: ${res.status}`)
+  if (!res.ok) throw new Error(await errorMessage(res))
   const data = (await res.json()) as Omit<EducationChatResponse, 'source'>
   return { ...data, source: 'backend' }
 }
