@@ -47,7 +47,7 @@ export default function Directory() {
         aria-expanded={open}
         aria-controls={listId}
         onClick={() => setOpen((o) => !o)}
-        className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-control bg-surface px-3.5 text-sm font-semibold text-ink transition hover:border-primary hover:text-primary"
+        className="inline-flex min-h-11 items-center gap-2 rounded-sm border border-control bg-surface px-3.5 text-sm font-semibold text-ink transition-colors hover:border-ink"
       >
         <Signpost className="size-4" aria-hidden="true" />
         Directory
@@ -57,9 +57,12 @@ export default function Directory() {
       <div
         id={listId}
         hidden={!open}
-        className="absolute left-0 top-full z-40 mt-2 w-[min(24rem,calc(100vw-2rem))] rounded-2xl border border-line bg-surface p-2 shadow-xl"
+        className="absolute left-0 top-full z-40 mt-2 w-[min(24rem,calc(100vw-2rem))] rounded-sm border border-ink/30 bg-surface"
       >
-        <ul className="grid gap-1">
+        <p className="border-b-2 border-ink px-4 py-2.5 font-mono text-[11px] font-medium uppercase tracking-widest text-ink-muted">
+          Building directory
+        </p>
+        <ul>
           {ROOMS.map((room) => (
             <li key={room.id}>
               <NavLink
@@ -67,14 +70,14 @@ export default function Directory() {
                 end
                 onClick={() => setOpen(false)}
                 className={({ isActive }) =>
-                  `flex min-h-11 flex-col justify-center rounded-xl px-3 py-2 no-underline transition ${
-                    isActive ? 'bg-sky ring-1 ring-primary/40' : 'hover:bg-cream'
+                  `flex min-h-11 flex-col justify-center border-b border-line px-4 py-2.5 no-underline transition-colors ${
+                    isActive ? 'bg-primary/[0.04] shadow-[inset_2px_0_0_var(--color-primary)]' : 'hover:bg-paper'
                   }`
                 }
               >
                 {({ isActive }) => (
                   <>
-                    <span className="text-sm font-semibold text-primary">
+                    <span className="font-serif text-base text-ink">
                       {room.name}
                       {isActive && <span className="font-normal text-ink-muted"> (you are here)</span>}
                     </span>

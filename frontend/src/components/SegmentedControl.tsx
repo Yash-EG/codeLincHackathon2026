@@ -24,13 +24,15 @@ export default function SegmentedControl<T extends string>({
   hideLegend,
   size = 'md',
 }: SegmentedControlProps<T>) {
-  const pad = size === 'sm' ? 'min-h-9 px-2.5 py-1.5 text-xs' : 'min-h-11 px-3.5 py-2.5 text-sm'
+  const pad = size === 'sm' ? 'min-h-11 px-3 text-xs' : 'min-h-11 px-4 text-sm'
   return (
     <fieldset>
-      <legend className={hideLegend ? 'sr-only' : 'mb-2 text-sm font-semibold text-ink'}>{legend}</legend>
-      <div className="inline-flex flex-wrap gap-1 rounded-xl border border-control bg-surface p-1">
+      <legend className={hideLegend ? 'sr-only' : 'mb-2 font-mono text-[11px] font-medium uppercase tracking-widest text-ink'}>
+        {legend}
+      </legend>
+      <div className="inline-flex flex-wrap rounded-sm border border-control bg-surface">
         {options.map((opt) => (
-          <label key={opt.value} className="relative">
+          <label key={opt.value} className="relative border-control not-first:border-l">
             <input
               type="radio"
               name={name}
@@ -40,7 +42,7 @@ export default function SegmentedControl<T extends string>({
               className="peer sr-only"
             />
             <span
-              className={`flex cursor-pointer items-center rounded-lg font-medium text-ink-muted transition hover:text-ink peer-checked:bg-primary peer-checked:font-semibold peer-checked:text-white peer-focus-visible:shadow-[0_0_0_2px_#fff] peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary ${pad}`}
+              className={`flex cursor-pointer items-center font-medium text-ink-muted transition-colors hover:text-ink peer-checked:bg-primary peer-checked:font-semibold peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary ${pad}`}
             >
               {opt.label}
             </span>

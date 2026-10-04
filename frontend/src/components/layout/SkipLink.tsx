@@ -13,7 +13,7 @@ export default function SkipLink() {
     <a
       href="#main"
       onClick={skip}
-      className="sr-only rounded-xl bg-primary px-4 py-3 font-semibold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50"
+      className="sr-only rounded-sm bg-primary px-4 py-3 font-semibold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50"
     >
       Skip to content
     </a>

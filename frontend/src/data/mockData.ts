@@ -1,7 +1,11 @@
-// Mock data for the demo user (Maya Chen / Lincoln Preferred PPO): the
-// challenge's walkthrough numbers. $1,500 maximum, $400 used, deductible not
-// met, and a root canal on tooth #14 that needs a crown afterwards, which is
-// $315 cheaper with the crown after Jan 1 (see lib/sequencing.ts).
+// Mock data for the demo user (Maya Chen). Two sample plans share her claims
+// and the fee schedule:
+//   Lincoln Preferred PPO: the challenge's walkthrough numbers. $1,500 maximum,
+//     $400 used, deductible not met, and a root canal on tooth #14 that needs a
+//     crown afterwards, which is $315 cheaper with the crown after Jan 1.
+//   Lincoln High-Option Dental: a $2,500 maximum and richer coinsurance, so the
+//     same crown fits this year (waiting would only add a second deductible).
+// See lib/sequencing.ts for the comparison.
 // The shapes match the Neon schema; the values are tuned for the demo and are
 // not the db/migrations seed. Replace these exports with fetches to the Spring
 // Boot backend when it is ready.
@@ -31,10 +35,31 @@ export const PLAN: InsurancePlan = {
     'The Annual Benefit Maximum of $1,500 per Covered Person applies to all Classes of service combined, in- and out-of-network, and renews on January 1 of each Benefit Period. A Calendar Year Deductible of $50 per Covered Person ($100 out-of-network) applies to Class II (Basic) and Class III (Major) services. Endodontic services are reimbursed under Class II (Basic) Coinsurance. Out-of-network claims are adjudicated at the 80th percentile of Usual, Customary and Reasonable (UCR) charges; Member is responsible for any balance billing. Crowns, inlays, onlays and fixed prosthetics are limited to one (1) per tooth per sixty (60) months. Unused benefits, including the Annual Maximum, do not carry forward to any subsequent Benefit Period.',
 }
 
+export const HIGH_OPTION_PLAN: InsurancePlan = {
+  id: '22222222-2222-4222-8222-000000000003',
+  carrierName: 'Ivorycrest Mutual',
+  planName: 'Lincoln High-Option Dental',
+  planType: 'PPO',
+  annualMaximum: 2500,
+  deductibleIndividualIn: 50,
+  deductibleIndividualOut: 100,
+  rolloverEnabled: false,
+  oonAllowedRatio: 0.9,
+  summaryOfBenefits:
+    'The Annual Benefit Maximum of $2,500 per Covered Person applies to all Classes of service combined, in- and out-of-network, and renews on January 1 of each Benefit Period. A Calendar Year Deductible of $50 per Covered Person ($100 out-of-network) applies to Class II (Basic) and Class III (Major) services. Class II (Basic) services, including Endodontics, are reimbursed at 90% in-network and Class III (Major) services at 60% in-network. Out-of-network claims are adjudicated at the 90th percentile of Usual, Customary and Reasonable (UCR) charges; Member is responsible for any balance billing. Crowns, inlays, onlays and fixed prosthetics are limited to one (1) per tooth per sixty (60) months. Unused benefits, including the Annual Maximum, do not carry forward to any subsequent Benefit Period.',
+}
+
 export const COVERAGE_TIERS: Record<CoverageClass, CoverageTier> = {
   PREVENTIVE: { coverageClass: 'PREVENTIVE', planPaysPctInNetwork: 100, planPaysPctOutNetwork: 100, deductibleApplies: false, waitingPeriodMonths: 0 },
   BASIC: { coverageClass: 'BASIC', planPaysPctInNetwork: 80, planPaysPctOutNetwork: 70, deductibleApplies: true, waitingPeriodMonths: 0 },
   MAJOR: { coverageClass: 'MAJOR', planPaysPctInNetwork: 50, planPaysPctOutNetwork: 40, deductibleApplies: true, waitingPeriodMonths: 0 },
+  ORTHODONTIC: { coverageClass: 'ORTHODONTIC', planPaysPctInNetwork: 50, planPaysPctOutNetwork: 50, deductibleApplies: false, waitingPeriodMonths: 0 },
+}
+
+export const HIGH_OPTION_TIERS: Record<CoverageClass, CoverageTier> = {
+  PREVENTIVE: { coverageClass: 'PREVENTIVE', planPaysPctInNetwork: 100, planPaysPctOutNetwork: 100, deductibleApplies: false, waitingPeriodMonths: 0 },
+  BASIC: { coverageClass: 'BASIC', planPaysPctInNetwork: 90, planPaysPctOutNetwork: 80, deductibleApplies: true, waitingPeriodMonths: 0 },
+  MAJOR: { coverageClass: 'MAJOR', planPaysPctInNetwork: 60, planPaysPctOutNetwork: 50, deductibleApplies: true, waitingPeriodMonths: 0 },
   ORTHODONTIC: { coverageClass: 'ORTHODONTIC', planPaysPctInNetwork: 50, planPaysPctOutNetwork: 50, deductibleApplies: false, waitingPeriodMonths: 0 },
 }
 
@@ -78,54 +103,99 @@ export const SAMPLE_PROCEDURE_INPUT = 'Root canal on tooth #14'
 
 const usedToDate = CLAIMS.reduce((sum, c) => sum + c.planPaid, 0) // 400
 const planYearEnd = '2026-12-31'
-const effectiveMaximum = PLAN.annualMaximum
 const daysRemaining = daysUntil(planYearEnd)
 
-/** v_enrollment_benefit_summary row (days are computed live, like CURRENT_DATE in the view). */
-export const BENEFIT_SUMMARY: BenefitSummary = {
-  enrollmentId: '33333333-3333-4333-8333-000000000001',
-  fullName: 'Maya Chen',
-  carrierName: PLAN.carrierName,
-  planName: PLAN.planName,
-  planYearStart: '2026-01-01',
-  planYearEnd,
-  annualMaximum: PLAN.annualMaximum,
-  rolloverBalance: 0,
-  effectiveMaximum,
-  usedToDate,
-  plannedPlanPays: 0,
-  remainingMaximum: Math.max(effectiveMaximum - usedToDate, 0),
-  deductible: PLAN.deductibleIndividualIn,
-  deductibleMet: 0,
-  deductibleRemaining: PLAN.deductibleIndividualIn,
-  daysRemaining,
-  benefitsExpiringSoon: daysRemaining <= 90 && effectiveMaximum - usedToDate > 0,
+/** v_enrollment_benefit_summary row for a plan (days are computed live, like CURRENT_DATE in the view). */
+function benefitSummaryFor(plan: InsurancePlan, enrollmentId: string): BenefitSummary {
+  const effectiveMaximum = plan.annualMaximum
+  return {
+    enrollmentId,
+    fullName: 'Maya Chen',
+    carrierName: plan.carrierName,
+    planName: plan.planName,
+    planYearStart: '2026-01-01',
+    planYearEnd,
+    annualMaximum: plan.annualMaximum,
+    rolloverBalance: 0,
+    effectiveMaximum,
+    usedToDate,
+    plannedPlanPays: 0,
+    remainingMaximum: Math.max(effectiveMaximum - usedToDate, 0),
+    deductible: plan.deductibleIndividualIn,
+    deductibleMet: 0,
+    deductibleRemaining: plan.deductibleIndividualIn,
+    daysRemaining,
+    benefitsExpiringSoon: daysRemaining <= 90 && effectiveMaximum - usedToDate > 0,
+  }
 }
 
-/** What the Bedrock "jargon translator" returns for this plan's summary_of_benefits. */
-export const JARGON_TRANSLATIONS: JargonTranslation[] = [
-  {
-    id: 'j-1',
-    topic: 'Use it or lose it',
-    planText: 'Unused benefits, including the Annual Maximum, do not carry forward to any subsequent Benefit Period.',
-    plainEnglish: 'Whatever is left of your $1,500 yearly maximum on Dec 31 disappears. On Jan 1 you start again with a fresh $1,500.',
+export const BENEFIT_SUMMARY = benefitSummaryFor(PLAN, '33333333-3333-4333-8333-000000000001')
+export const HIGH_OPTION_BENEFIT_SUMMARY = benefitSummaryFor(HIGH_OPTION_PLAN, '33333333-3333-4333-8333-000000000004')
+
+const usd = (n: number) => `$${n.toLocaleString('en-US')}`
+
+/** What the Bedrock "jargon translator" returns for a plan's summary_of_benefits. */
+function jargonFor(plan: InsurancePlan): JargonTranslation[] {
+  const max = usd(plan.annualMaximum)
+  const percentile = Math.round(plan.oonAllowedRatio * 100)
+  return [
+    {
+      id: 'j-1',
+      topic: 'Use it or lose it',
+      planText: 'Unused benefits, including the Annual Maximum, do not carry forward to any subsequent Benefit Period.',
+      plainEnglish: `Whatever is left of your ${max} yearly maximum on Dec 31 disappears. On Jan 1 you start again with a fresh ${max}.`,
+    },
+    {
+      id: 'j-2',
+      topic: 'Deductible',
+      planText: `A Calendar Year Deductible of ${usd(plan.deductibleIndividualIn)} per Covered Person (${usd(plan.deductibleIndividualOut)} out-of-network) applies to Class II (Basic) and Class III (Major) services.`,
+      plainEnglish: `Each year you pay the first ${usd(plan.deductibleIndividualIn)} of fillings, root canals and crowns before the plan starts sharing the cost. Check-ups and cleanings skip it. You have not met it yet this year.`,
+    },
+    {
+      id: 'j-3',
+      topic: 'Out-of-network',
+      planText: `Out-of-network claims are adjudicated at the ${percentile}th percentile of Usual, Customary and Reasonable (UCR) charges; Member is responsible for any balance billing.`,
+      plainEnglish: 'Out-of-network dentists can charge more than the plan considers fair. The plan pays its share of the "fair" price; you pay everything above it.',
+    },
+    {
+      id: 'j-4',
+      topic: 'Crown frequency',
+      planText: 'Crowns, inlays, onlays and fixed prosthetics are limited to one (1) per tooth per sixty (60) months.',
+      plainEnglish: 'Each tooth can get one covered crown every 5 years. Tooth #14 has had none, so its crown is eligible.',
+    },
+  ]
+}
+
+export const JARGON_TRANSLATIONS = jargonFor(PLAN)
+
+export type SamplePlanId = 'preferred' | 'high-option'
+
+export interface SamplePlan {
+  id: SamplePlanId
+  plan: InsurancePlan
+  tiers: Record<CoverageClass, CoverageTier>
+  benefits: BenefitSummary
+  translations: JargonTranslation[]
+  /** One line for the intake sheet. */
+  blurb: string
+}
+
+/** The sample plans offered at Reception. */
+export const SAMPLE_PLANS: Record<SamplePlanId, SamplePlan> = {
+  preferred: {
+    id: 'preferred',
+    plan: PLAN,
+    tiers: COVERAGE_TIERS,
+    benefits: BENEFIT_SUMMARY,
+    translations: JARGON_TRANSLATIONS,
+    blurb: 'The walkthrough plan: $400 used so far, deductible not met.',
   },
-  {
-    id: 'j-2',
-    topic: 'Deductible',
-    planText: 'A Calendar Year Deductible of $50 per Covered Person ($100 out-of-network) applies to Class II (Basic) and Class III (Major) services.',
-    plainEnglish: 'Each year you pay the first $50 of fillings, root canals and crowns before the plan starts sharing the cost. Check-ups and cleanings skip it. You have not met it yet this year.',
+  'high-option': {
+    id: 'high-option',
+    plan: HIGH_OPTION_PLAN,
+    tiers: HIGH_OPTION_TIERS,
+    benefits: HIGH_OPTION_BENEFIT_SUMMARY,
+    translations: jargonFor(HIGH_OPTION_PLAN),
+    blurb: 'A richer plan: 90% basic, 60% major, same claims.',
   },
-  {
-    id: 'j-3',
-    topic: 'Out-of-network',
-    planText: 'Out-of-network claims are adjudicated at the 80th percentile of Usual, Customary and Reasonable (UCR) charges; Member is responsible for any balance billing.',
-    plainEnglish: 'Out-of-network dentists can charge more than the plan considers fair. The plan pays its share of the "fair" price; you pay everything above it.',
-  },
-  {
-    id: 'j-4',
-    topic: 'Crown frequency',
-    planText: 'Crowns, inlays, onlays and fixed prosthetics are limited to one (1) per tooth per sixty (60) months.',
-    plainEnglish: 'Each tooth can get one covered crown every 5 years. Tooth #14 has had none, so its crown is eligible.',
-  },
-]
+}

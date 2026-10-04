@@ -1,5 +1,4 @@
 import { useRef } from 'react'
-import { ShieldCheck } from 'lucide-react'
 import { Link } from 'react-router'
 import { useCssHeightVar } from '../../a11y/useCssHeightVar'
 import { useSessionStore } from '../../store/sessionStore'
@@ -24,15 +23,15 @@ export default function Header() {
   const plan = useSessionStore((s) => s.plan)
 
   return (
-    <header ref={ref} className="sticky top-0 z-30 border-b border-line bg-surface/95 backdrop-blur short:static">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5 sm:px-6">
-        <Link to="/" className="flex items-center gap-2.5 rounded-xl no-underline">
-          <span className="grid size-9 place-items-center rounded-xl bg-primary text-white">
-            <ToothMark className="size-5" />
-          </span>
-          <span className="leading-tight">
-            <span className="block text-[15px] font-semibold text-ink">Molarity</span>
-            <span className="block text-xs text-ink-muted">Dental benefits optimizer</span>
+    <header ref={ref} className="sticky top-0 z-30 border-b border-ink/15 bg-surface short:static">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6 lg:px-12">
+        <Link to="/" className="flex items-center gap-2.5 rounded-sm no-underline">
+          <ToothMark className="size-6 text-primary" />
+          <span className="leading-none">
+            <span className="block font-serif text-xl tracking-tight text-ink">Molarity</span>
+            <span className="mt-1 block font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+              Dental benefits optimizer
+            </span>
           </span>
         </Link>
 
@@ -40,13 +39,15 @@ export default function Header() {
 
         <div className="ml-auto flex flex-wrap items-center gap-3">
           {plan ? (
-            <p className="hidden items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-sm text-ink md:inline-flex">
-              <ShieldCheck className="size-4 text-success" aria-hidden="true" />
-              <span className="sr-only">Checked-in plan: </span>
-              {plan.carrierName} · <span className="font-semibold">{plan.planName}</span>
+            <p className="hidden text-right leading-tight md:block">
+              <span className="block font-mono text-[10px] uppercase tracking-widest text-ink-muted">Checked-in plan</span>
+              <span className="block text-sm text-ink">{plan.planName}</span>
             </p>
           ) : (
-            <Link to="/reception#check-in" className="hidden text-sm font-semibold text-primary underline md:inline">
+            <Link
+              to="/reception#check-in"
+              className="hidden text-sm font-semibold text-primary underline decoration-1 underline-offset-4 md:inline"
+            >
               Check in a plan
             </Link>
           )}

@@ -137,14 +137,14 @@ function Coverage() {
             works.
           </p>
         ) : (
-          <dl className="space-y-4">
+          <dl className="border-t-2 border-ink">
             {translations.map((t) => (
-              <div key={t.id} className="rounded-xl border border-line bg-surface p-4">
-                <dt className="font-semibold text-ink">{t.topic}</dt>
-                <dd className="mt-2 space-y-2">
-                  <p className="text-sm text-ink-muted">
-                    <span className="font-semibold">Your plan says: </span>
-                    <q className="italic">{t.planText}</q>
+              <div key={t.id} className="border-b border-line py-5">
+                <dt className="font-mono text-[11px] font-medium uppercase tracking-widest text-ink-muted">{t.topic}</dt>
+                <dd className="mt-3 space-y-3">
+                  <p className="border-l-2 border-line pl-4 font-serif text-[15px] italic leading-relaxed text-ink-muted">
+                    <span className="sr-only">Your plan says: </span>
+                    <q>{t.planText}</q>
                   </p>
                   <p className="text-ink">
                     <span className="font-semibold">In plain English: </span>

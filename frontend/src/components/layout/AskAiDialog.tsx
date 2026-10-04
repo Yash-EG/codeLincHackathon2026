@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Sparkles, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { useNavigate } from 'react-router'
 import { useShallow } from 'zustand/react/shallow'
 import { getTooth } from '../../data/teeth'
@@ -7,6 +7,7 @@ import { useAssistant } from '../../lib/useAssistant'
 import { useSessionStore } from '../../store/sessionStore'
 import { announce, useUiStore } from '../../store/uiStore'
 import ChatPanel from '../assistant/ChatPanel'
+import { buttonPrimary, buttonSecondary } from '../ui'
 
 const SUGGESTIONS = [
   'Root canal on tooth #14',
@@ -71,12 +72,12 @@ export default function AskAiDialog() {
       ref={dialogRef}
       aria-labelledby="ask-ai-title"
       aria-describedby="ask-ai-description"
-      className="m-auto h-[min(44rem,calc(100dvh-2rem))] w-[min(36rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl border border-line bg-surface p-0 text-ink shadow-2xl open:flex backdrop:bg-ink/40"
+      className="m-auto h-[min(44rem,calc(100dvh-2rem))] w-[min(36rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-sm border border-ink/30 bg-surface p-0 text-ink open:flex backdrop:bg-ink/45"
     >
-      <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
+      <div className="flex items-start justify-between gap-3 border-b-2 border-ink px-5 py-4">
         <div>
-          <h2 id="ask-ai-title" className="flex items-center gap-2 text-lg font-semibold">
-            <Sparkles className="size-5 text-primary" aria-hidden="true" />
+          <p className="font-mono text-[11px] font-medium uppercase tracking-widest text-ink-muted">Benefits assistant</p>
+          <h2 id="ask-ai-title" className="mt-1 font-serif text-2xl leading-tight">
             Ask AI
           </h2>
           <p id="ask-ai-description" className="mt-0.5 text-sm text-ink-muted">
@@ -87,7 +88,7 @@ export default function AskAiDialog() {
           type="button"
           onClick={() => dialogRef.current?.close()}
           aria-label="Close Ask AI"
-          className="grid size-11 shrink-0 place-items-center rounded-xl text-ink-muted transition hover:bg-cream hover:text-ink"
+          className="grid size-11 shrink-0 place-items-center rounded-sm text-ink-muted transition-colors hover:bg-paper hover:text-ink"
         >
           <X className="size-5" aria-hidden="true" />
         </button>
@@ -105,7 +106,7 @@ export default function AskAiDialog() {
             onViewBreakdown={() => closeAndGo('/billing#line-items')}
           />
         ) : (
-          <div className="space-y-4 p-5">
+          <div className="space-y-4 px-5 py-6">
             <p>The assistant answers questions about your plan, so it needs one checked in first.</p>
             <div className="flex flex-wrap gap-3">
               <button
@@ -114,14 +115,14 @@ export default function AskAiDialog() {
                   loadSamplePlan()
                   announce('Sample plan checked in: Lincoln Preferred PPO.')
                 }}
-                className="inline-flex min-h-11 items-center rounded-xl bg-primary px-4 font-semibold text-white transition hover:bg-primary-strong"
+                className={buttonPrimary}
               >
                 Use the sample plan
               </button>
               <button
                 type="button"
                 onClick={() => closeAndGo('/reception#check-in')}
-                className="inline-flex min-h-11 items-center rounded-xl border border-control px-4 font-semibold text-primary transition hover:border-primary"
+                className={buttonSecondary}
               >
                 Enter my plan at Reception
               </button>

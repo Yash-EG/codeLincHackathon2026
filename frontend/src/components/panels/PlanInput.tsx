@@ -2,17 +2,41 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowRight, CircleCheck } from 'lucide-react'
 import { Link } from 'react-router'
 import { useShallow } from 'zustand/react/shallow'
+import { SAMPLE_PLANS, type SamplePlanId } from '../../data/mockData'
 import { formatLongDate, formatUsd } from '../../lib/format'
 import { useSessionStore } from '../../store/sessionStore'
 import { announce } from '../../store/uiStore'
 import CheckInForm from '../CheckInForm'
 import Panel from '../Panel'
-import { buttonPrimary, buttonSecondary } from '../ui'
+import PdfDropzone from '../PdfDropzone'
+import { buttonPrimary, buttonSecondary, ledger } from '../ui'
+
+type Method = SamplePlanId | 'manual' | 'upload'
+
+const METHODS: Array<{ value: Method; name: string; blurb: string; meta: string }> = [
+  {
+    value: 'preferred',
+    name: SAMPLE_PLANS.preferred.plan.planName,
+    blurb: SAMPLE_PLANS.preferred.blurb,
+    meta: `${formatUsd(SAMPLE_PLANS.preferred.plan.annualMaximum)} max`,
+  },
+  {
+    value: 'high-option',
+    name: SAMPLE_PLANS['high-option'].plan.planName,
+    blurb: SAMPLE_PLANS['high-option'].blurb,
+    meta: `${formatUsd(SAMPLE_PLANS['high-option'].plan.annualMaximum)} max`,
+  },
+  { value: 'manual', name: 'Enter my plan', blurb: 'Copy the numbers from your summary of benefits.', meta: 'Manual' },
+  { value: 'upload', name: 'Upload benefits PDF', blurb: 'Attach your summary of benefits.', meta: 'PDF' },
+]
+
+const isSample = (method: Method): method is SamplePlanId => method === 'preferred' || method === 'high-option'
 
 /**
- * Reception's check-in (the front desk in 3D): the sample plan, a typed-in plan,
- * or (later) an uploaded PDF. Once checked in it becomes a summary of the plan.
- * Focus follows the swap so keyboard and screen-reader users never lose their place.
+ * Reception's check-in (the front desk in 3D), laid out like an intake sheet:
+ * pick how to check in (a sample plan, your own numbers or a PDF), then fill in
+ * that part. Once checked in it becomes a ruled summary of the plan. Focus
+ * follows every swap so keyboard and screen-reader users never lose their place.
  */
 export default function PlanInput() {
   const { plan, benefits, loadSamplePlan, setManualPlan, reset } = useSessionStore(
@@ -24,117 +48,160 @@ export default function PlanInput() {
       reset: s.reset,
     })),
   )
-  // The panel swaps between the options and the summary; keep focus on what replaced the clicked control.
-  const [focusAfter, setFocusAfter] = useState<'summary' | 'options' | null>(null)
+  const [method, setMethod] = useState<Method>('preferred')
+  const [focusAfter, setFocusAfter] = useState<'summary' | 'options' | 'manual' | null>(null)
   const summaryRef = useRef<HTMLParagraphElement>(null)
-  const sampleButtonRef = useRef<HTMLButtonElement>(null)
+  const optionsRef = useRef<HTMLFieldSetElement>(null)
 
   useEffect(() => {
     if (!focusAfter) return
-    const target = focusAfter === 'summary' ? summaryRef.current : sampleButtonRef.current
+    const target =
+      focusAfter === 'summary'
+        ? summaryRef.current
+        : focusAfter === 'manual'
+          ? document.getElementById('plan-carrierName')
+          : optionsRef.current?.querySelector<HTMLInputElement>('input:checked')
     if (!target) return
     target.focus()
     setFocusAfter(null)
-  }, [focusAfter, plan])
+  }, [focusAfter, plan, method])
+
+  if (plan && benefits) {
+    const left = Math.max(benefits.remainingMaximum, 0)
+    return (
+      <Panel id="check-in" eyebrow="Intake" title="Check in your plan">
+        <p ref={summaryRef} tabIndex={-1} className="flex items-center gap-2 text-sm font-semibold text-success">
+          <CircleCheck className="size-4" aria-hidden="true" />
+          Checked in
+        </p>
+        <p className="font-serif text-2xl leading-tight text-ink">
+          {plan.planName}
+          <span className="block font-sans text-sm text-ink-muted">{plan.carrierName}</span>
+        </p>
+        <dl className={ledger.list}>
+          <SummaryRow label="Member" value={benefits.fullName} />
+          <SummaryRow label="Annual maximum" value={formatUsd(benefits.effectiveMaximum)} />
+          <SummaryRow label="Used so far" value={formatUsd(benefits.usedToDate)} />
+          <SummaryRow label="Left this year" value={formatUsd(left)} accent />
+          <SummaryRow
+            label="Deductible"
+            value={
+              benefits.deductibleRemaining > 0
+                ? `${formatUsd(benefits.deductible)}, ${formatUsd(benefits.deductibleRemaining)} to go`
+                : `${formatUsd(benefits.deductible)}, met`
+            }
+          />
+          <SummaryRow label="Plan year ends" value={formatLongDate(benefits.planYearEnd)} />
+          <SummaryRow label="Days left" value={String(benefits.daysRemaining)} />
+        </dl>
+        <div className="flex flex-wrap gap-3">
+          <Link to="/operatory" className={buttonPrimary}>
+            Next: describe your care <ArrowRight className="size-4" aria-hidden="true" />
+          </Link>
+          <button
+            type="button"
+            className={buttonSecondary}
+            onClick={() => {
+              reset()
+              setFocusAfter('options')
+              announce('Plan cleared. Choose how to check in.')
+            }}
+          >
+            Check in a different plan
+          </button>
+        </div>
+      </Panel>
+    )
+  }
+
+  const sample = isSample(method) ? SAMPLE_PLANS[method] : null
 
   return (
-    <Panel id="check-in" title="Check in your plan">
-      {plan && benefits ? (
-        <div className="space-y-4">
-          <p ref={summaryRef} tabIndex={-1} className="flex items-center gap-2 font-semibold text-success">
-            <CircleCheck className="size-5" aria-hidden="true" />
-            Checked in: {plan.carrierName} {plan.planName}
-          </p>
-          <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
-            <SummaryItem label="Member" value={benefits.fullName} />
-            <SummaryItem label="Annual maximum" value={formatUsd(benefits.effectiveMaximum)} />
-            <SummaryItem label="Used so far" value={formatUsd(benefits.usedToDate)} />
-            <SummaryItem
-              label="Deductible"
-              value={
-                benefits.deductibleRemaining > 0
-                  ? `${formatUsd(benefits.deductible)}, ${formatUsd(benefits.deductibleRemaining)} to go`
-                  : `${formatUsd(benefits.deductible)}, met`
-              }
+    <Panel id="check-in" eyebrow="Intake" title="Check in your plan">
+      <fieldset ref={optionsRef}>
+        <legend className="mb-3 font-mono text-[11px] font-medium uppercase tracking-widest text-ink">
+          How would you like to check in?
+        </legend>
+        <div className="border-t-2 border-ink">
+          {METHODS.map((option) => (
+            <label
+              key={option.value}
+              className="grid cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-4 border-b border-line px-3 py-3.5 transition-colors hover:bg-paper/70 has-checked:bg-primary/[0.04] has-checked:shadow-[inset_2px_0_0_var(--color-primary)]"
+            >
+              <input
+                type="radio"
+                name="check-in-method"
+                value={option.value}
+                checked={method === option.value}
+                onChange={() => setMethod(option.value)}
+                className="mt-1 size-4 accent-primary"
+              />
+              <span>
+                <span className="block font-medium text-ink">{option.name}</span>
+                <span className="block text-sm text-ink-muted">{option.blurb}</span>
+              </span>
+              <span className="mt-0.5 font-mono text-xs tabular-nums text-ink-muted">{option.meta}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      {sample && (
+        <div className="space-y-5">
+          <dl className={ledger.list}>
+            <SummaryRow label="Annual maximum" value={formatUsd(sample.plan.annualMaximum)} />
+            <SummaryRow label="Used so far" value={formatUsd(sample.benefits.usedToDate)} />
+            <SummaryRow label="Deductible" value={`${formatUsd(sample.plan.deductibleIndividualIn)}, not met`} />
+            <SummaryRow
+              label="Covered in-network"
+              value={`${sample.tiers.PREVENTIVE.planPaysPctInNetwork} / ${sample.tiers.BASIC.planPaysPctInNetwork} / ${sample.tiers.MAJOR.planPaysPctInNetwork}%`}
+              hint="Preventive / basic / major"
             />
-            <SummaryItem label="Plan year ends" value={formatLongDate(benefits.planYearEnd)} />
-            <SummaryItem label="Days left" value={String(benefits.daysRemaining)} />
           </dl>
-          <div className="flex flex-wrap gap-3">
-            <Link to="/operatory" className={buttonPrimary}>
-              Next: describe your care <ArrowRight className="size-4" aria-hidden="true" />
-            </Link>
-            <button
-              type="button"
-              className={buttonSecondary}
-              onClick={() => {
-                reset()
-                setFocusAfter('options')
-                announce('Plan cleared. Choose how to check in.')
-              }}
-            >
-              Check in a different plan
-            </button>
-          </div>
+          <button
+            type="button"
+            className={buttonPrimary}
+            onClick={() => {
+              loadSamplePlan(sample.id)
+              setFocusAfter('summary')
+              announce(`Sample plan checked in: ${sample.plan.planName}.`)
+            }}
+          >
+            Check in {sample.plan.planName}
+          </button>
         </div>
-      ) : (
-        <div className="space-y-6">
-          <section aria-labelledby="sample-title" className="space-y-2">
-            <h3 id="sample-title" className="text-lg font-semibold text-ink">
-              Option 1: Use the sample plan
-            </h3>
-            <p>
-              Maya Chen&rsquo;s Lincoln Preferred PPO: a $1,500 yearly maximum with $400 already used. The quickest way to
-              try it.
-            </p>
-            <button
-              ref={sampleButtonRef}
-              type="button"
-              className={buttonPrimary}
-              onClick={() => {
-                loadSamplePlan()
-                setFocusAfter('summary')
-                announce('Sample plan checked in: Lincoln Preferred PPO.')
-              }}
-            >
-              Use the sample plan
-            </button>
-          </section>
+      )}
 
-          <section aria-labelledby="manual-title" className="space-y-2 border-t border-line pt-5">
-            <h3 id="manual-title" className="text-lg font-semibold text-ink">
-              Option 2: Enter your plan
-            </h3>
-            <p>Copy these from your plan&rsquo;s summary of benefits.</p>
-            <CheckInForm
-              onSubmit={(input) => {
-                setManualPlan(input)
-                setFocusAfter('summary')
-                announce(`Plan checked in: ${input.planName}.`)
-              }}
-            />
-          </section>
+      {method === 'manual' && (
+        <CheckInForm
+          onSubmit={(input) => {
+            setManualPlan(input)
+            setFocusAfter('summary')
+            announce(`Plan checked in: ${input.planName}.`)
+          }}
+        />
+      )}
 
-          <section aria-labelledby="upload-title" className="space-y-2 border-t border-line pt-5">
-            <h3 id="upload-title" className="text-lg font-semibold text-ink">
-              Option 3: Upload your plan PDF
-            </h3>
-            <p>
-              Coming soon: upload your summary of benefits and the assistant will read the numbers for you. For now, use
-              option 1 or 2.
-            </p>
-          </section>
-        </div>
+      {method === 'upload' && (
+        <PdfDropzone
+          onEnterManually={() => {
+            setMethod('manual')
+            setFocusAfter('manual')
+          }}
+        />
       )}
     </Panel>
   )
 }
 
-function SummaryItem({ label, value }: { label: string; value: string }) {
+function SummaryRow({ label, value, hint, accent }: { label: string; value: string; hint?: string; accent?: boolean }) {
   return (
-    <div className="flex justify-between gap-3 border-b border-line py-1.5">
-      <dt className="text-ink-muted">{label}</dt>
-      <dd className="font-semibold text-ink tabular-nums">{value}</dd>
+    <div className={ledger.row}>
+      <dt className={ledger.key}>
+        {label}
+        {hint && <span className="block text-xs">{hint}</span>}
+      </dt>
+      <dd className={`${ledger.value} ${accent ? 'font-semibold text-amber-ink' : ''}`}>{value}</dd>
     </div>
   )
 }

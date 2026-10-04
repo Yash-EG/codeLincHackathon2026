@@ -42,7 +42,7 @@ export default function SceneRoot({ room, reducedMotion }: SceneRootProps) {
         jarFill={jarFill}
       />
       {/* The camera fades to this while it swaps one room for the next. */}
-      <div ref={fadeRef} className="absolute inset-0 bg-cream opacity-0" />
+      <div ref={fadeRef} className="absolute inset-0 bg-surface opacity-0" />
     </div>
   )
 }

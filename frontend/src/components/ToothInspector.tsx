@@ -1,6 +1,7 @@
-import { CalendarClock, Check, Sparkles, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import type { ToothInfo } from '../data/teeth'
 import type { ToothStatus } from '../types/domain'
+import { buttonQuiet, eyebrow } from './ui'
 
 export interface ToothHistoryEntry {
   label: string
@@ -28,56 +29,42 @@ const QUICK_ACTIONS: Array<{ label: string; prompt: (n: number) => string }> = [
 /** Details and one-click "what would it cost" questions for the selected tooth. */
 export default function ToothInspector({ tooth, status, history, disabled, onAsk, onClose }: ToothInspectorProps) {
   return (
-    <section aria-labelledby="tooth-inspector-title" className="rounded-2xl border border-line bg-surface p-4">
+    <section aria-labelledby="tooth-inspector-title" className="border-t-2 border-ink pt-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 id="tooth-inspector-title" className="flex flex-wrap items-baseline gap-x-2 text-ink">
-            <span className="text-2xl font-semibold tracking-tight">Tooth #{tooth.number}</span>
-            <span className="text-sm text-ink-muted">{tooth.name}</span>
+          <h3 id="tooth-inspector-title" className="font-serif text-2xl leading-tight text-ink">
+            Tooth <span className="font-mono tabular-nums">#{tooth.number}</span>
           </h3>
-          {status && (
-            <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-ink">
-              {status === 'planned' ? (
-                <CalendarClock className="size-4 text-viz-planned" aria-hidden="true" />
-              ) : (
-                <Check className="size-4 text-viz-treated" aria-hidden="true" />
-              )}
-              {status === 'planned' ? 'Care planned' : 'Treated this plan year'}
-            </p>
-          )}
+          <p className="mt-1 text-sm text-ink-muted">
+            {tooth.name}
+            {status && <> · {status === 'planned' ? 'Care planned' : 'Treated this plan year'}</>}
+          </p>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="grid size-10 shrink-0 place-items-center rounded-lg text-ink-muted transition hover:bg-cream hover:text-ink"
-          aria-label="Clear selected tooth"
-        >
+        <button type="button" onClick={onClose} className={buttonQuiet}>
           <X className="size-4" aria-hidden="true" />
+          Clear<span className="sr-only"> selected tooth</span>
         </button>
       </div>
 
       {history.length > 0 && (
-        <ul className="mt-3 space-y-1.5 border-t border-line pt-3" aria-label={`History for tooth ${tooth.number}`}>
+        <ul className="mt-4 border-t border-line" aria-label={`History for tooth ${tooth.number}`}>
           {history.map((entry) => (
-            <li key={`${entry.kind}-${entry.label}-${entry.detail}`} className="flex items-center gap-2 text-sm">
-              {entry.kind === 'planned' ? (
-                <CalendarClock className="size-3.5 shrink-0 text-viz-planned" aria-hidden="true" />
-              ) : (
-                <Check className="size-3.5 shrink-0 text-viz-treated" aria-hidden="true" />
-              )}
-              <span className="sr-only">{entry.kind === 'planned' ? 'Planned:' : 'Treated:'}</span>
+            <li
+              key={`${entry.kind}-${entry.label}-${entry.detail}`}
+              className="flex items-baseline gap-3 border-b border-line py-2 text-sm"
+            >
+              <span className="w-16 shrink-0 font-mono text-[11px] uppercase tracking-widest text-ink-muted">
+                {entry.kind === 'planned' ? 'Planned' : 'Treated'}
+              </span>
               <span className="text-ink">{entry.label}</span>
-              <span className="ml-auto text-ink-muted">{entry.detail}</span>
+              <span className="ml-auto font-mono text-ink-muted">{entry.detail}</span>
             </li>
           ))}
         </ul>
       )}
 
-      <div className="mt-3 border-t border-line pt-3">
-        <p className="mb-2 flex items-center gap-1.5 text-sm text-ink-muted">
-          <Sparkles className="size-4 text-primary" aria-hidden="true" />
-          Ask what it would cost
-        </p>
+      <div className="mt-5">
+        <p className={`${eyebrow} mb-2`}>Ask what it would cost</p>
         <div className="flex flex-wrap gap-2">
           {QUICK_ACTIONS.map((action) => (
             <button
@@ -85,7 +72,7 @@ export default function ToothInspector({ tooth, status, history, disabled, onAsk
               type="button"
               disabled={disabled}
               onClick={() => onAsk(action.prompt(tooth.number))}
-              className="min-h-10 rounded-full border border-control bg-surface px-3.5 py-1.5 text-sm font-medium text-ink transition hover:border-primary hover:text-primary disabled:cursor-wait disabled:opacity-60"
+              className="min-h-11 rounded-sm border border-control bg-surface px-3.5 text-sm font-medium text-ink transition-colors hover:border-primary hover:text-primary disabled:cursor-wait disabled:opacity-60"
             >
               {action.label}
               <span className="sr-only"> on tooth {tooth.number}</span>
