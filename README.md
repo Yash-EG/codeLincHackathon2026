@@ -1,254 +1,401 @@
 # Molarity: AI Dental Benefits Optimizer
 
-Codelinc Hackathon 2026. Describe the dental care you need in plain language, and Molarity:
+codeLinc Hackathon 2026. Molarity helps an employee describe the dental care they
+need in plain language, understand their benefits in plain English, and — where
+the data is wired up — see an estimated in- vs out-of-network out-of-pocket cost.
 
-1. **Interprets it**: maps "root canal on tooth #14" to CDT `D3330` on tooth #14, and knows a crown has to follow.
-2. **Translates the plan jargon**: shows what insurance pays and what you pay, in and out of network.
-3. **Sequences the care**: spreads treatment across plan years so the annual maximum gets used and nothing expires unused.
+The project is a hackathon work-in-progress. Some capabilities run today, some run
+only with a database and AWS access, and some are scaffolded for teammates to
+finish. The **Feature status** table below says which is which, and the rest of the
+README is careful not to imply more than the current code supports.
 
-| Layer | Tech |
+| Layer | Tech (verified in the tree) |
 | --- | --- |
-| Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, React Router 7, Zustand |
-| 3D | Three.js via React Three Fiber v9 + drei (procedural room kit, no model files), GSAP ScrollTrigger |
-| Backend | Java 21 / Spring Boot 3.5 (`backend/`, see below) |
-| Database | Neon (serverless Postgres) |
-| AI | Amazon Bedrock |
+| Frontend | React 19, TypeScript, Vite 7, Tailwind CSS v4, React Router 7, Zustand 5 |
+| 3D | Three.js + React Three Fiber v9 + drei v10 (procedural room kit, no model files), GSAP |
+| Backend | Java 21 / Spring Boot 3.5.16 (`backend/`), AWS SDK for Java v2 |
+| Database | PostgreSQL / Neon (schema + seed under `db/migrations/`) |
+| AI | Amazon Bedrock (Converse API), default model `us.amazon.nova-2-lite-v1:0` |
+
+## Feature status
+
+| Capability | Status | Notes |
+| --- | --- | --- |
+| Walk-through dental-office UI (one route per room), Traditional + 3D views, WCAG 2.2 AA work | **Implemented** | Pure frontend. Runs offline. |
+| Benefits-education chatbot (`/api/education/chat`) | **Implemented, wired end-to-end** | Frontend Imaging tab calls the backend and falls back to an in-browser glossary when the backend is down. |
+| Procedure estimate + in/out-of-network comparison in the UI | **Implemented against an in-browser mock** | The UI's estimate assistant uses `frontend/src/lib/mockAssistant.ts`. It does **not** call the backend. |
+| Backend analyze endpoint (`/api/analyze`): intent extraction → trusted-data pricing → plain-English explanation | **Implemented in the backend, not yet called by the frontend** | Requires the `db` profile + seed data, and AWS Bedrock access for intent extraction and narration. |
+| Backend AI dev endpoints (`/api/ai/test`, `/api/ai/intent`, `/api/ai/explain-procedure`) | **Implemented** | Need Bedrock access. `/api/ai/test` returns a clean `502` without it. |
+| Verified personal plan facts in the education chatbot | **Not available yet** | The default `PlanFactsProvider` returns nothing, so personal-plan questions get an "amounts unavailable" answer by design (see below). |
+| Authenticated plan lookup / production-grade estimates | **Not implemented** | No auth layer; dollar values in the seed and the UI mock are illustrative placeholders. |
+
+There is **no HTML prototype** and **no authenticated member lookup** in this
+checkout. The frontend is the real UI; estimate numbers shown in the UI today come
+from the in-browser mock, and the seeded database numbers are placeholders.
+
+## The three capabilities, kept separate
+
+1. **Procedure selection + estimate (UI).** The employee describes care ("root
+   canal on tooth #14") or picks a tooth. Today the UI prices this through
+   `frontend/src/lib/mockAssistant.ts` and the local estimator in
+   `frontend/src/lib/estimate.ts` — fully offline. The backend has a real
+   equivalent (`/api/analyze`) that is not yet wired to the UI.
+2. **Plan-based estimate + network comparison (backend).** `/api/analyze` turns a
+   natural-language message into a structured in- vs out-of-network comparison,
+   using **only trusted database facts** for every price and coverage number. See
+   the data-flow section.
+3. **Benefits-education chatbot (backend + UI).** `/api/education/chat` answers
+   general benefits questions ("what is a deductible?") from a reviewed glossary. It
+   never computes a price; cost questions become a handoff flag back to the estimate
+   flow. This is the one backend capability the frontend calls today.
+
+## How the AI is (and is not) used
+
+The AI **never calculates coverage or prices.** Two separate integrations:
+
+- **Procedure-intent + estimate explanation** (`/api/analyze`): Bedrock is used
+  *only* to interpret the message into a structured `DentalIntent`
+  (`BedrockIntentExtractor`). The orchestrator (`AnalysisService`) then verifies
+  every actionable part against trusted data — it resolves the procedure against the
+  catalog (never the AI's guessed CDT code), confirms a claimed recommendation
+  against appointment history, and loads plan rules, usage and coverage from the
+  data layer. The math is done by `BenefitCalculatorService` /
+  `NetworkComparisonService`. The AI is called again at the end *only to narrate* the
+  already-computed numbers (`AiService.explainEstimate`); if it errors or returns
+  blank, the estimate stands unchanged.
+- **Education chatbot** (`/api/education/chat`): has its **own** model ID
+  (`EDUCATION_BEDROCK_MODEL_ID`), its own system prompt, and a deterministic
+  glossary fallback. When a model is configured it may *rewrite* the deterministic
+  answer in plainer language, but a guard rejects any rewrite that introduces a
+  dollar amount not in the verified facts. With no model configured, the glossary
+  answer is returned verbatim.
+
+### Data flow for `/api/analyze`
+
+```
+client: { userId, message }           ← no prices/coverage ever accepted from the client
+   │
+   ▼
+BedrockIntentExtractor  →  DentalIntent (COST_ESTIMATE | UNSUPPORTED)   [AI: interpret only]
+   │
+   ▼
+AnalysisService  (verify against trusted DentalDataAccess)
+   ├─ resolve spoken term → canonical procedure (catalog, not AI code)
+   ├─ load active plan + derive benefit year (never hard-coded)
+   ├─ confirm recommendation vs. appointment history (if claimed)
+   ├─ require tooth number for tooth-specific procedures
+   └─ load coverage + benefit usage (in + out of network)
+   │
+   ▼
+NetworkComparisonService / BenefitCalculatorService   [deterministic math]
+   │
+   ▼
+AiService.explainEstimate   [AI: narrate the fixed numbers only]
+   │
+   ▼
+AnalysisResponse: kind=ESTIMATE (estimates[] + optional timing) OR kind=CLARIFICATION
+```
+
+When a precondition is missing (ambiguous procedure, no active plan, missing tooth,
+no pricing rows, unsupported intent) the service returns a single plain-English
+**clarification question** instead of guessing.
+
+## Repository layout
+
+```
+backend/                      Spring Boot API + Bedrock (see "Backend")
+db/
+  migrations/
+    V1__schema.sql            tables: users, dental_plans, plan_coverage, procedures, benefit_usage
+    V2__seed_data.sql         demo seed: "Demo PPO" plan, 9 canonical procedures, demo user 1
+    V3__appointments.sql      appointments + appointment_procedures (+ demo user 1's last visit)
+  queries.sql                 one verification query per required question (Q1–Q9)
+  README.md                   database-layer documentation (owner: Gopal)
+frontend/
+  src/
+    router.tsx                one route per room under the AppShell layout
+    rooms.ts                  the room directory (paths, names, descriptions, prerequisites)
+    routes/                   room pages: real, accessible content
+    components/               layout shell, panels, tooth picker, education chat, 3D office, ...
+    store/                    Zustand stores (session, dental, settings, ui, scene) + selectors
+    lib/
+      estimate.ts             coinsurance / deductible / annual-max estimator (UI)
+      sequencing.ts           this year vs. after Jan 1 comparison (UI)
+      mockAssistant.ts        OFFLINE stand-in for a procedure-estimate backend (not yet wired)
+      educationChat.ts        client for POST /api/education/chat (+ offline glossary fallback)
+    data/mockData.ts          demo plans for the offline UI (Lincoln Preferred PPO / High-Option)
+    a11y/                     route focus, reduced motion, WebGL check, fixed-bar height vars
+```
+
+Theme colors are tokens in `frontend/src/index.css` (`@theme`; Tailwind v4 has no
+`tailwind.config.js`).
 
 ## How the site is built
 
-The site is a dental office you walk through, one route per room. **The HTML is the real site.** Every heading, form, table and door is a normal element. The 3D office is a background layer behind it: `aria-hidden`, never focusable, and driven by native page scroll. It never uses `<ScrollControls>`, which takes over scrolling.
+The site is a dental office you walk through, one route per room. **The HTML is the
+real site.** Every heading, form, table and door is a normal element. The 3D office
+is a background layer behind it: `aria-hidden`, never focusable, driven by native
+page scroll (no `<ScrollControls>`).
 
 | Route | Room | What happens there |
 | --- | --- | --- |
 | `/` | Entrance | Landing page |
 | `/reception` | Reception | Check in a plan (sample or manual entry) |
 | `/hallway` | Hallway | Every room, as door cards |
-| `/operatory` | Operatory | Explore a procedure (guided), describe care in words, or pick a tooth |
-| `/imaging` | Imaging | Ask the benefits glossary chat (works without a plan), coverage tiers, frequency limits, fine print in plain English |
+| `/operatory` | Operatory | Explore a procedure, describe care in words, or pick a tooth |
+| `/imaging` | Imaging | Ask the benefits-education chat (works without a plan) |
 | `/consult` | Consult office | What to do this plan year vs. after Jan 1 |
 | `/billing` | Billing | What you pay, line items, in- vs out-of-network |
+| `/providers` | Providers | In-network dentists, filtered (fictional demo listings) |
 | `/records` | Records | Annual maximum, claims, reminders (`.ics` export) |
-| `/providers` | Providers | In-network dentists, filtered by specialty and new patients (fictional demo listings) |
-
-Every room shares a persistent shell: a skip link, a header with the **Directory** and the view toggle, an always-visible **annual max bar**, and **Ask AI** (a native modal `<dialog>`).
+| `*` | Not found | Fallback route |
 
 **Two views of the same pages:**
-- **3D office (immersive):** text sits on frosted panels (at least 88% opaque, so contrast holds over any scene). As you scroll, the camera holds on the object each section is about, then glides to the next one. Changing room flies the camera through a door.
-- **Traditional:** the 3D code is never downloaded, and panels are solid with no motion. This view turns on automatically when the OS asks for reduced motion or WebGL is unavailable. Either view can be picked in the header.
+- **3D office (immersive):** text sits on frosted panels; as you scroll, the camera
+  holds on the object each section is about, then glides to the next. Changing room
+  flies the camera through a door.
+- **Traditional:** the 3D code is never downloaded; panels are solid with no motion.
+  Turns on automatically for reduced-motion or when WebGL is unavailable. Either view
+  can be picked in the header.
 
-**Accessibility target:** WCAG 2.2 AA. The skip link, one `<h1>` per room, and focus moving to that `<h1>` on room change are built in. Arrivals are announced in a polite live region. Focus rings use two colors. `scroll-padding` keeps the fixed bars from covering focused content. Errors are linked to their form fields. The tooth map is plain buttons.
+**Accessibility target:** WCAG 2.2 AA — skip link, one `<h1>` per room with focus
+moving to it on room change, polite live-region announcements, two-color focus rings,
+`scroll-padding` so fixed bars don't cover focused content, errors linked to fields,
+tooth map as plain buttons.
 
-## Repository layout
+## Prerequisites
 
-```
-backend/                    Spring Boot API + Bedrock (see "Backend" below)
-db/migrations/
-  V1__schema.sql            tables + views (Flyway naming)
-  V2__seed_mock_data.sql    3 fictional plans, 28 CDT codes, 3 demo users
-frontend/src/
-  rooms.ts                  the room directory (paths, names, descriptions, prerequisites)
-  router.tsx                one route per room under the AppShell layout
-  routes/                   room pages: real, accessible content
-  components/layout/        AppShell, Header, Directory, ViewToggle, MaxBar, AskAiDialog, SkipLink, LiveRegion
-  components/               Panel, RoomIntro, DoorCard, ToothPicker, CheckInForm, AnnualMaxProgress, ...
-  components/panels/        the four main panels: PlanInput, TreatmentMap, CostBreakdown, Timeline
-  components/3d/            the background 3D office (lazy chunk)
-    SceneRoot.tsx           aria-hidden wrapper at z-index -1: canvas + fade overlay, reads the scene store
-    useScrollStops.ts       ScrollTrigger per [data-camera] section -> scroll progress
-    DentalOffice.jsx        mounts one room at a time, camera rig, door fly-throughs, STATIONS
-    roomKit.jsx             procedural textures, materials, room shell, doors, furniture, lights
-    <Name>Room.jsx          one room each; exports STOPS (camera per section) and DOORS
-  store/
-    sessionStore.ts         plan, benefits, procedures, next-year care, AI analysis, chat (sessionStorage only)
-    useDentalStore.ts       the brief's store API (annualMax, used, pending, ...) over the session store
-    selectors.ts            line items, totals, annual max, next-year plan (derived, never stored)
-    settingsStore.ts        view mode (localStorage)
-    uiStore.ts  sceneStore.ts
-  a11y/                     route focus, reduced motion, WebGL check, fixed-bar height vars
-  lib/estimate.ts           coinsurance / deductible / annual-max estimator
-  lib/sequencing.ts         this year vs. after Jan 1: what splitting care across the reset saves
-  lib/mockAssistant.ts      offline stand-in for the Bedrock endpoint
-  data/mockData.ts          the demo plan (Lincoln Preferred PPO: $1,500 max, $400 used)
-```
-
-Theme colors are tokens in `src/index.css` (`@theme`; Tailwind v4 has no `tailwind.config.js`). The palette is blue, mint and sage, and each text pair's contrast ratio is noted next to it.
+- **Node.js** and **npm** for the frontend (built and verified with Vite 7; this
+  checkout was last touched with Node 24 / npm 11, but any current LTS Node works).
+- **Java 21** for the backend. The build targets Java 21 (`pom.xml` sets
+  `java.version=21`) even if a newer JDK is your default.
+- **AWS Bedrock access** (an `AWS_BEARER_TOKEN_BEDROCK` or standard AWS credentials)
+  only for the AI endpoints. Health and the frontend run without it.
+- **A PostgreSQL/Neon database** only for `/api/analyze` and other `db`-profile
+  features. Health, `/api/ai/test`, and `/api/education/chat` (glossary mode) run
+  without a database.
 
 ## Run the frontend
+
+The frontend uses Vite via npm scripts — don't rely on a global `vite`.
 
 ```bash
 cd frontend
 npm install
 npm run dev        # http://localhost:5173
-npm run build      # type-check + production build
-npm run lint
+npm run build      # type-check (tsc -b) + production build
+npm run typecheck  # type-check only (tsc -b)
+npm run lint       # eslint .
+npm run preview    # preview the production build
 ```
 
-The UI is fully demoable offline: `src/lib/mockAssistant.ts` stands in for the backend. Vite proxies `/api/*` to `http://localhost:8080` for when the Spring Boot service exists.
+The UI is fully demoable **offline**: the procedure-estimate assistant uses
+`src/lib/mockAssistant.ts`, and the education chat falls back to an in-browser
+glossary. Vite proxies `/api/*` to `http://localhost:8080`, so when the Spring Boot
+service is running the education chat talks to the real backend automatically.
 
-## Database (Neon)
+## Run the backend (Spring Boot + Bedrock)
 
-1. Create a Neon project and copy both connection strings. Use the **direct** (non-pooled) one for migrations.
-2. Apply the schema and the seed:
+Java API under `backend/`, base package `com.codelinc.dental`. Use Java 21; if it
+isn't your default JDK, point `JAVA_HOME` at it first.
 
-   ```bash
-   psql "$DATABASE_URL_UNPOOLED" -v ON_ERROR_STOP=1 \
-     -f db/migrations/V1__schema.sql \
-     -f db/migrations/V2__seed_mock_data.sql
-   ```
+```bash
+cd backend
 
-3. Try it:
+# Build + run tests
+./mvnw clean verify          # or: mvnw.cmd clean verify   (Windows)
 
-   ```sql
-   SELECT full_name, plan_name, used_to_date, remaining_maximum, days_remaining, benefits_expiring_soon
-   FROM v_enrollment_benefit_summary;
-   ```
+# Run WITHOUT a database (health + AI endpoints only)
+./mvnw spring-boot:run       # starts on http://localhost:8080
 
-Schema highlights:
-
-- **Enumerations are `TEXT + CHECK`, not PG enums**, so JPA maps them with `@Enumerated(EnumType.STRING)`. Money is `NUMERIC(10,2)`, which maps to `BigDecimal`.
-- **Coverage model:**
-  - `plan_coverage_tiers` holds the classic 100/80/50 coinsurance tiers.
-  - `cdt_procedures.default_coverage_class` sets each procedure's default tier.
-  - `plan_procedure_overrides` handles exclusions and reclassifications (e.g. "implants excluded on Core PPO").
-- **`procedure_fees`** stores both the negotiated in-network fee and the UCR fee, which powers the in- vs out-of-network comparison.
-- **Views:**
-  - `v_plan_procedure_coverage` resolves coverage for every plan × procedure × region. This is ready-made context for Bedrock prompts.
-  - `v_enrollment_benefit_summary` gives used, planned and remaining maximum, deductible progress, days left and the `benefits_expiring_soon` flag. This drives the progress bar.
-- **Spring Boot:** the files use Flyway naming. Point Flyway at them with `spring.flyway.locations=filesystem:../db/migrations`.
-
-## Backend (Spring Boot + Bedrock)
-
-Java API under `backend/`. This is the shared foundation; business logic
-(procedure extraction, pricing, recommendations, RAG, etc.) is built on top of it.
-
-- **Java 21** (required). The build targets Java 21 even if a newer JDK is your default.
-- **Spring Boot 3.5.x**, Maven, base package `com.codelinc.dental`.
-- **Amazon Bedrock** via AWS SDK for Java v2 (Converse API), model
-  `us.amazon.nova-2-lite-v1:0` in region `us-east-2`.
-- Region and model ID are centralized in `application.yml` / `AwsBedrockProperties`,
-  not hardcoded across the code.
-
-### Package layout
-
-```
-com.codelinc.dental
-├── config        AwsBedrockProperties, BedrockConfig (client bean), CorsConfig
-├── controller    HealthController, AiTestController
-├── dto           AiTestRequest, AiTestResponse, ErrorResponse
-├── model         (empty — JPA entities land here once the Neon schema is final)
-├── repository    (empty — Spring Data repositories go here)
-├── service       AiService, BedrockAiService (Converse API)
-└── exception     AiServiceException, GlobalExceptionHandler
+# Run WITH a database (enables /api/analyze and other db-profile features)
+# Set DATABASE_* env vars first, then:
+SPRING_PROFILES_ACTIVE=db ./mvnw spring-boot:run
 ```
 
-JPA and the Postgres driver are on the classpath but **no entities or tables are
-defined** — the schema is owned by `db/migrations/`. Hibernate is set to
-`ddl-auto: none` so it never creates, drops, or alters the database.
+Bedrock auth comes from the AWS SDK default credential chain. The app never reads
+the token directly; export it in your shell:
+
+```bash
+export AWS_BEARER_TOKEN_BEDROCK="<your Bedrock API key>"
+```
+
+Without Bedrock credentials, the AI endpoints return a clean JSON error (for
+example `/api/ai/test` returns `502`) and `/api/health` still works.
 
 ### Environment variables
 
 Names only — see `backend/.env.example`. Never commit real values.
 
-| Variable | Purpose |
-| --- | --- |
-| `DATABASE_URL` | Neon JDBC URL, e.g. `jdbc:postgresql://<host>/<db>?sslmode=require` |
-| `DATABASE_USERNAME` | Neon user |
-| `DATABASE_PASSWORD` | Neon password |
-| `AWS_BEARER_TOKEN_BEDROCK` | Bedrock API key; read by the AWS SDK credential chain |
-| `BEDROCK_REGION` | defaults to `us-east-2` |
-| `BEDROCK_MODEL_ID` | defaults to `us.amazon.nova-2-lite-v1:0` |
-| `CORS_ALLOWED_ORIGINS` | defaults to `http://localhost:5173` (Vite dev server) |
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `DATABASE_URL` | Neon/Postgres JDBC URL, e.g. `jdbc:postgresql://<host>/<db>?sslmode=require` | — (required under `db` profile) |
+| `DATABASE_USERNAME` | database user | — |
+| `DATABASE_PASSWORD` | database password | — |
+| `BEDROCK_REGION` | Bedrock region | `us-east-2` |
+| `BEDROCK_MODEL_ID` | model for intent extraction + estimate narration | `us.amazon.nova-2-lite-v1:0` |
+| `EDUCATION_BEDROCK_ENABLED` | enable the education chatbot's model-rewrite step | `true` |
+| `EDUCATION_BEDROCK_MODEL_ID` | dedicated model for the education chatbot; blank = deterministic glossary only | *(blank)* |
+| `AWS_BEARER_TOKEN_BEDROCK` | Bedrock API key, read by the AWS SDK credential chain | — |
+| `CORS_ALLOWED_ORIGINS` | comma-separated allowed origins | `http://localhost:5173` |
 
-The database layer is **opt-in** via the `db` Spring profile, so the API boots for
-early development even before Neon is wired up:
+The database layer is **opt-in** via the `db` Spring profile; `DataSource`/JPA
+auto-configuration is excluded by default so the API boots for early development
+before a database exists. Hibernate is `ddl-auto: none` — the schema is owned by
+`db/migrations/`.
 
-- Without a database: `mvn spring-boot:run` (health + AI endpoints work).
-- With Neon: set the `DATABASE_*` vars and run with `SPRING_PROFILES_ACTIVE=db`.
+## API endpoints (present in code)
 
-### Build and run
+All under `/api`. Only contracts actually in the controllers are listed.
 
-Use Java 21. If it isn't your default JDK, point `JAVA_HOME` at it:
+| Method & path | Purpose | Needs |
+| --- | --- | --- |
+| `GET /api/health` | liveness | nothing |
+| `POST /api/ai/test` | dev Bedrock round-trip | Bedrock |
+| `POST /api/ai/intent` | dev: classify a message into `DentalIntent` | Bedrock |
+| `POST /api/ai/explain-procedure` | dev: plain-language procedure explanation | Bedrock |
+| `POST /api/analyze` | estimate + in/out-network comparison, or a clarification | Bedrock + `db` profile + seed |
+| `POST /api/education/chat` | benefits-education answer | nothing (model optional) |
 
-```bash
-cd backend
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64   # adjust to your Java 21 path
-
-./mvnw -version        # (or: mvn -version) confirm it reports Java 21
-mvn clean verify       # compile + run tests
-mvn spring-boot:run    # start on http://localhost:8080
-```
-
-Bedrock auth comes from your shell. The AWS SDK automatically uses
-`AWS_BEARER_TOKEN_BEDROCK` if it is exported:
-
-```bash
-export AWS_BEARER_TOKEN_BEDROCK="<your Bedrock API key>"
-mvn spring-boot:run
-```
-
-### Test the endpoints
-
-Health check:
+Health:
 
 ```bash
 curl http://localhost:8080/api/health
 # {"status":"ok"}
 ```
 
-Bedrock round-trip (temporary dev endpoint):
+Education chatbot (runs without a database or a model — glossary fallback):
 
 ```bash
-curl -X POST http://localhost:8080/api/ai/test \
+curl -X POST http://localhost:8080/api/education/chat \
   -H "Content-Type: application/json" \
-  -d '{"message":"Respond with exactly: Java Bedrock integration works."}'
-# {"response":"Java Bedrock integration works."}
+  -d '{"message":"What is a deductible?"}'
 ```
 
-If `AWS_BEARER_TOKEN_BEDROCK` is not available to the process, `/api/ai/test`
-returns a clean `502` JSON error instead of a stack trace — the health endpoint
-still works regardless.
+```json
+{
+  "intent": "GENERAL_DEFINITION",
+  "answer": "In general: A deductible is the amount you may need to pay ...",
+  "personalPlanDataAvailable": null,
+  "estimateHandoff": false,
+  "termsUsed": ["deductible"],
+  "modelUsed": false
+}
+```
 
-### Benefits-education chat
+Education chatbot response fields let the UI render the right state without parsing
+prose:
+- `estimateHandoff: true` — a cost question; route the user to the estimate flow (no
+  price is computed here).
+- `personalPlanDataAvailable: false` — a personal-plan question with no verified
+  facts. **Today this is always the case**: the default `PlanFactsProvider`
+  (`UnavailablePlanFactsProvider`) returns nothing, so the chatbot gives the general
+  rule and says the specific amounts can't be verified yet. It becomes `true` only
+  once a real, authenticated plan-facts provider is registered as a Spring bean.
+- `personalPlanDataAvailable: null` — not a personal-plan question.
 
-`POST /api/education/chat` with `{"message": "What is a deductible?"}` answers general benefits questions from the reviewed glossary in `backend/src/main/resources/education/glossary.json`. It routes personal-plan questions (no verified plan facts yet) and cost questions (handed off to the estimate flow). Set `EDUCATION_BEDROCK_MODEL_ID` to let a dedicated Bedrock model rewrite the answers; leave it blank for the deterministic fallback. The Imaging chat (`frontend/src/lib/educationChat.ts`) calls it through the Vite `/api` proxy and falls back to an in-browser copy of the glossary when the backend isn't running.
+Analyze (needs the `db` profile, seed data, and Bedrock):
+
+```bash
+curl -X POST http://localhost:8080/api/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"1","message":"how much is a crown on tooth 19 in vs out of network?"}'
+```
+
+The response is an `AnalysisResponse`: either `kind: "ESTIMATE"` with an `estimates`
+array (one `IN_NETWORK` and one `OUT_OF_NETWORK` `BenefitEstimate`, plus optional
+`timing`), or `kind: "CLARIFICATION"` with a single `clarificationQuestion`. The
+client sends only `userId` and `message`; it never sends prices, coverage, or
+usage — those trusted facts are loaded server-side.
+
+## Database
+
+The schema and demo seed live under `db/` (owner: Gopal); see `db/README.md` for the
+full data model. Apply the migrations in order with a **direct (non-pooled)**
+connection string:
+
+```bash
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/V1__schema.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/V2__seed_data.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/V3__appointments.sql
+```
+
+Schema notes:
+- Tables only (no views): `users`, `dental_plans`, `plan_coverage`, `procedures`,
+  `benefit_usage` (V1), plus `appointments` and `appointment_procedures` (V3).
+- Money is `NUMERIC(10,2)` → `BigDecimal`; enumerations are `TEXT + CHECK`.
+- Coverage is stored as rows per `(plan, category, network)`, not columns.
+- Nine canonical procedures: Exam, X-Ray, Cleaning, Filling, Extraction, Deep
+  Cleaning, Root Canal, Crown, Implant. The AI maps free text to one of these.
+- The database stores facts and does **no benefit math**; Java computes coverage,
+  deductible application, and the annual-maximum cap.
+
+**All seed values are illustrative placeholders**, not verified coverage. The demo
+seed is a fictional "Demo PPO" plan ($1,500 annual max, $50 deductible, 2026) and
+demo user 1 ($900 used / $600 remaining, deductible met, crown recommended on tooth
+#19). Do not treat any dollar amount as real benefit data.
+
+> **Estimate disclaimer.** Any cost figure the app shows is an estimate for guidance
+> only. Actual coverage and payment are determined by the insurer. The numbers in
+> this checkout (UI mock and database seed alike) are illustrative placeholders.
+
+## Tests, mocks, and limitations
+
+Backend tests live under `backend/src/test` and run with `./mvnw clean verify`
+(JUnit via `spring-boot-starter-test`). They cover the controllers
+(`HealthControllerTest`, `AnalysisControllerTest`, `EducationChatControllerTest`),
+the JDBC data access (`JdbcDentalDataAccessTest`), the orchestration
+(`AnalysisServiceTest`), the calculators (`BenefitCalculatorServiceTest`,
+`NetworkComparisonServiceTest`, `TreatmentTimingServiceTest`), the Bedrock
+integrations (`BedrockAiServiceTest`, `BedrockIntentExtractorTest`,
+`BedrockProcedureExplanationServiceTest`), and the education chatbot
+(`EducationChatServiceTest`).
+
+- `AnalysisServiceTest` exercises the orchestration against an **in-memory fake**
+  `DentalDataAccess`, so the analyze logic is tested without a real database. The
+  live `/api/analyze` path still needs the `db` profile and seed data.
+- The Bedrock tests do not call AWS; the AI client is stubbed.
+- The frontend has no automated test runner configured; `npm run build` /
+  `npm run typecheck` / `npm run lint` are the available checks.
+
+Known limitations: the frontend's procedure estimate uses the in-browser mock and is
+not wired to `/api/analyze`; verified personal plan facts are not available to the
+education chatbot yet; there is no authentication; and all monetary values are
+placeholders.
 
 ## The 3D office
 
-The rooms live in `frontend/src/components/3d/`, one file each: Entrance (storefront), Reception, Hallway, Operatory, Imaging, Consult office, Billing and Records. Each is a 6 × 5 × 3 m cutaway room built from `roomKit.jsx`. They have light oak floors, mint and sage walls with a maroon and orange rail, white doors with frosted glass, plants, art and clocks.
+The rooms live in `frontend/src/components/3d/`, one file each (Entrance, Reception,
+Hallway, Operatory, Imaging, Consult, Billing, Providers, Records). Each is a cutaway room built
+procedurally from `roomKit.jsx` — **nothing is downloaded**; textures, bump and
+roughness maps are drawn on canvases in code. Each room exports `STOPS` (one camera
+stop per page section, keyed by the `<Panel>` id) and `DOORS` (for the fly-through on
+route change). `DentalOffice.jsx` mounts one room at a time with the camera rig and
+`STATIONS`; `useScrollStops.ts` drives scroll progress via ScrollTrigger. With
+reduced motion, door transitions become a short cross-fade. The whole 3D layer is a
+lazy chunk that the Traditional view never loads.
 
-- **Nothing is downloaded.** Textures (oak, plaster, fabric, leather, brushed metal, cork, concrete, grass, signs, screens) are drawn on canvases in code, with bump and roughness maps. Porcelain, lamp shades and the tooth models use a clearcoat finish, and chrome uses brushed roughness. Contact shadows sit under the furniture.
-- **`STOPS`:** each room lists one camera stop per page section, keyed by the `id` of the `<Panel>`, with the object to highlight. `view(target, distance, azimuth, elevation)` frames an object tightly. The lens is narrow (24°), and on wide screens the picture shifts right so the object sits beside the text.
-- **Scroll:** the camera holds on a section's object for the first 70% of the section, with a slow orbit of up to 5°. It then glides to the next stop. Every move is damped (`THREE.MathUtils.damp`).
-- **`DOORS`:** each room lists its doors (`wall`, `u`, plaque). On a route change the camera flies to the door to the next room. The door starts opening 200 ms before the camera gets there, and the camera passes through the doorway with a 0.01 near plane. It then comes in through the matching door of the next room, which closes behind it. With reduced motion this is a short cross-fade.
-- **Stations:** `STATIONS` in `DentalOffice.jsx` names the eight places the demo stops: the desk, chair, X-ray, terminal, calendar, coin jar, network doors and cork board.
-- **Preview one room:** `<RoomPreview Room={OperatoryRoom} stops={STOPS} />` from `roomKit.jsx`.
+## Team boundaries
+
+These describe who owns what, not proof that unmerged features exist on this branch:
+
+- **This branch** focuses on Bedrock/AI and the benefits-education chatbot.
+- **Jay** owns backend orchestration and benefit calculations. The seams are already
+  in the code: the education chatbot depends on the `PlanFactsProvider` interface
+  (default `UnavailablePlanFactsProvider` until Jay's authenticated provider is
+  registered), and `AnalysisService` depends on the `DentalDataAccess` port.
+- **Gopal** owns the database models and migrations under `db/`.
+
+Confirmed remaining integration work, from the current code:
+- Wire the frontend procedure-estimate assistant to the backend (today it uses
+  `mockAssistant.ts`; the backend equivalent is `/api/analyze`).
+- Register a real `PlanFactsProvider` so the education chatbot can answer personal
+  questions with verified amounts.
 
 ## Claude Code skills
 
-`.claude/skills/` holds skills that Claude Code loads in every session on this repo.
-
-- **`design-taste-frontend`**: the "taste skill", frontend design rules for layout, type, color and motion. It is copied unchanged from [leonxlnx/taste-skill](https://github.com/leonxlnx/taste-skill) (`skills/taste-skill/SKILL.md` at commit `ce26fc2`, MIT, license alongside). To update it, copy that file again from upstream.
-- **This project's rules win where they disagree.** Those rules are WCAG 2.2 AA, the blue/mint/sage tokens in `frontend/src/index.css` (including the `#fbf8f1` surface), Inter, lucide icons, GSAP + React Three Fiber instead of Motion, reduced motion and the Traditional view. The skill is aimed at landing pages, so it fits the Entrance best. The room pages (forms, tables, the cost breakdown) follow the existing components.
-
-## Backend contract (to build next)
-
-`POST /api/assistant/chat`, body `{ enrollmentId, message, toothNumber }`. It returns the `AssistantReply` shape from `src/lib/mockAssistant.ts`:
-
-- `content`: the plain-English answer.
-- `requests`: the CDT codes plus tooth numbers.
-- `lineItems`: the priced estimates.
-- `deferred`: care to book after the maximum resets (e.g. the crown after a root canal).
-- `analysis`: the `AiAnalysis` card: `simplifiedExplanation`, `estimatedCost`, `inNetworkCost`, `outOfNetworkCost` and `suggestedSequence`.
-
-Under the hood, Bedrock maps the free text to CDT codes using `cdt_procedures.common_aliases`. The service then prices the codes from `v_plan_procedure_coverage` and checks them against `v_enrollment_benefit_summary`.
-
-## Demo script
-
-1. **Entrance → Walk in → Reception.** On the intake sheet, keep **Lincoln Preferred PPO** selected and choose **Check in Lincoln Preferred PPO**. The max bar shows $400 of $1,500 used.
-2. **Operatory.** "Root canal on tooth #14" is already typed in, so choose **Price it**. The root canal costs you $232 in-network. The assistant adds the crown the tooth needs afterwards and books it for Jan 12: **"Do step 1 now and step 2 after Jan 1 to save $315."**
-3. **Billing.** See what you pay, and that the $50 deductible isn't met yet. Switch to **Out-of-network** to compare.
-4. **Consult office.** The timeline puts the root canal before Dec 31 and the crown after Jan 1. The table shows $1,284 if you do both this year, against $969 split.
-5. **Records.** See the annual maximum (the coin jar in 3D) and claims, then **Add to my calendar (.ics)**.
-6. **Ask AI** (bottom right in every room): *"Can I get another cleaning this year?"*
-7. Switch the header to **Traditional** to show the same pages with no 3D.
-8. For contrast, check in **Lincoln High-Option Dental** instead ($2,500 maximum, 90% basic, 60% major). The same root canal and crown both fit this year, so the timeline says there is nothing to gain by waiting.
+`.claude/skills/` holds skills that Claude Code loads in sessions on this repo,
+including `design-taste-frontend` (a frontend design "taste skill"). This project's
+own rules win where they disagree: WCAG 2.2 AA, the blue/mint/sage tokens in
+`frontend/src/index.css`, Inter, lucide icons, GSAP + React Three Fiber, reduced
+motion, and the Traditional view.
