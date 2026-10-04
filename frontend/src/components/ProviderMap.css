@@ -1,0 +1,119 @@
+/*
+ * Pins and popups for the provider map. Plain CSS, imported by ProviderMap.tsx
+ * after Mapbox's own stylesheet so these rules win. The pins are <button>s that
+ * Mapbox positions with an inline transform, so nothing here sets `transform`.
+ *
+ * Nothing here uses box-shadow on the button itself: the Traditional view
+ * removes shadows from every button (traditional.css), so a ring made of
+ * box-shadow would vanish there. The selection ring is a pseudo-element.
+ */
+
+/* In-network: a filled teal dot. Out-of-network: a hollow grey ring. The difference is
+   fill versus outline, never colour alone. */
+.provider-pin {
+  position: relative;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 9999px;
+  background: var(--color-primary, #0f766e);
+  cursor: pointer;
+}
+.provider-pin--out {
+  background: #fff;
+  border-color: var(--color-ink-muted, #596270);
+}
+/* A 44px touch target around the dot (the inset is measured from inside the 2px border: 24px + 2 × 10px). */
+.provider-pin::after {
+  content: "";
+  position: absolute;
+  inset: -0.625rem;
+}
+/* The chosen office: a bigger dot inside a ring. */
+.provider-pin--selected {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+.provider-pin--selected::before {
+  content: "";
+  position: absolute;
+  inset: -0.4375rem;
+  border: 2px solid var(--color-primary, #0f766e);
+  border-radius: 9999px;
+  pointer-events: none;
+}
+.provider-pin--out.provider-pin--selected::before {
+  border-color: var(--color-ink-muted, #596270);
+}
+
+/* The popup card. */
+.provider-popup-shell .mapboxgl-popup-content {
+  padding: 0.875rem 2.5rem 0.875rem 1rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.25);
+  font-family: var(--font-sans, system-ui, sans-serif);
+}
+.provider-popup-shell .mapboxgl-popup-close-button {
+  top: 0;
+  right: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--color-ink-muted, #596270);
+}
+.provider-popup p {
+  margin: 0;
+}
+.provider-popup__name {
+  font-family: var(--font-serif, Georgia, serif);
+  font-size: 1.0625rem;
+  line-height: 1.2;
+  color: var(--color-ink, #1f2937);
+}
+.provider-popup__practice {
+  margin-top: 0.125rem;
+  font-size: 0.875rem;
+  color: var(--color-ink-muted, #596270);
+}
+.provider-popup__meta {
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--color-ink, #1f2937);
+}
+.provider-popup__phone {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-primary, #0f766e);
+  text-underline-offset: 3px;
+}
+
+/* Windows high contrast and similar: system colours keep filled versus outlined apart. */
+@media (forced-colors: active) {
+  .provider-pin {
+    border-color: ButtonText;
+    background: Canvas;
+  }
+  .provider-pin--in {
+    background: Highlight;
+  }
+  .provider-pin--selected::before,
+  .provider-pin--out.provider-pin--selected::before {
+    border-color: Highlight;
+  }
+  .provider-popup-shell .mapboxgl-popup-content {
+    border: 1px solid CanvasText;
+  }
+}
+
+/* No motion for people who ask for none. */
+@media (prefers-reduced-motion: reduce) {
+  .provider-pin {
+    transition: none;
+  }
+}

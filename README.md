@@ -194,6 +194,19 @@ The UI is fully demoable **offline**: the procedure-estimate assistant uses
 glossary. Vite proxies `/api/*` to `http://localhost:8080`, so when the Spring Boot
 service is running the education chat talks to the real backend automatically.
 
+### The dentist map (optional)
+
+The Providers page can show the (fictional) offices on a Mapbox map: pins follow the
+filters, a pin opens that office's details, and each row has a **Show on map** button. In
+the 3D view the map is tilted, with 3D buildings and a slow rotation you can stop; in the
+Traditional view, and with reduced motion, it is flat and still.
+
+It needs a Mapbox token. Copy `frontend/.env.example` to `frontend/.env` and set
+`VITE_MAPBOX_TOKEN` to a **public** (`pk.`) token, restricted to your site's URL in your
+Mapbox account (it ships in the browser bundle, and maps are billed per load). Without a
+token, or without WebGL, the map section is simply left out and the list works as before.
+`mapbox-gl` is its own lazy chunk, so it is only downloaded on this page.
+
 ## Run the backend (Spring Boot + Bedrock)
 
 Java API under `backend/`, base package `com.codelinc.dental`. Use Java 21; if it
