@@ -26,6 +26,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { Lights, doorPose } from "./roomKit";
+import { DOOR_SWING_TIMELINE_CONFIG } from "./motionConfig";
+import { useSceneStore } from "../../store/sceneStore";
 import EntranceRoom, { STOPS as ENTRANCE_STOPS, DOORS as ENTRANCE_DOORS } from "./EntranceRoom";
 import ReceptionRoom, { STOPS as RECEPTION_STOPS, DOORS as RECEPTION_DOORS } from "./ReceptionRoom";
 import HallwayRoom, { STOPS as HALLWAY_STOPS, DOORS as HALLWAY_DOORS } from "./HallwayRoom";
@@ -72,20 +74,19 @@ function stopsFor(room, sectionIds) {
 }
 
 /* ------------------------------- camera tuning ------------------------------- */
-const FOV = 24; // narrow lens: focal objects fill the view beside the text panel
+const FOV = 34; // natural lens: rooms read as rooms; close-ups still fill the view beside the text panel
 const NEAR = 0.1;
 const NEAR_TRANSIT = 0.01; // while flying through door openings
 const WIDE_SCREEN = 1024; // above this the text panels sit on the left…
 const SHIFT = 0.18; // …so the projection shifts the subject right of centre
-const HOLD = 0.7; // share of each section spent on its station before gliding to the next
-const ORBIT = THREE.MathUtils.degToRad(5); // micro-orbit across a held section
-const LAMBDA = 4; // damping for THREE.MathUtils.damp
-const APPROACH = 0.85; // s, glide to the point in front of the door
-const OPEN_LEAD = 0.2; // s, the door starts opening this long before the camera gets there
-const DWELL = 0.35; // s, let the door finish swinging before passing through
-const THROUGH = 0.45; // s, through the opening
-const ENTER = 1.1; // s, from the next room's door to its first station
-const FADE = 0.2; // s, fade to/from the overlay around the room swap
+const HOLD = 0.6; // share of each section spent on its station before gliding to the next
+const BREATH_ORBIT = THREE.MathUtils.degToRad(1.5); // peak orbit while a section is held
+const BREATH_PAN = 0.05; // m, peak sideways drift while held
+const PULL_BACK = 0.14; // extra distance mid-glide between far-apart stops
+const PULL_BACK_LIFT = THREE.MathUtils.degToRad(4); // and a little extra height
+const LAMBDA = 3.2; // damping for THREE.MathUtils.damp (lower = softer follow)
+const LOOK_AHEAD = 0.9; // m along the fly-through path the camera looks toward
+const SWAP_FADE = 0.3; // m either side of the door swap over which the overlay fades in/out
 
 const smooth = (x) => {
   const t = THREE.MathUtils.clamp(x, 0, 1);
@@ -107,36 +108,73 @@ function doorFrame(door) {
   return { c: v3(center), n, latch };
 }
 
-/** Pose for a scroll position: hold on a station (with a slow 5° orbit), then glide to the next. */
+/** Camera offset from its target as distance / azimuth / elevation (the inverse of roomKit's view()). */
+function toSpherical(camera, target) {
+  const dx = camera.x - target.x, dy = camera.y - target.y, dz = camera.z - target.z;
+  const d = Math.hypot(dx, dy, dz) || 1;
+  return { d, az: Math.atan2(dx, dz), el: Math.asin(THREE.MathUtils.clamp(dy / d, -1, 1)) };
+}
+
+/** Shortest signed angle from a to b. */
+function angleDelta(a, b) {
+  return Math.atan2(Math.sin(b - a), Math.cos(b - a));
+}
+
+/**
+ * Pose for a scroll position: hold on a station, then orbit to the next.
+ *
+ * Between stops the camera moves on a sphere around a moving target (target follows a
+ * spline; distance, azimuth and elevation ease), so it arcs around the room instead of
+ * cutting across it, and the subject stays framed the whole way. It pulls back a little
+ * mid-move when the targets are far apart. While held, it "breathes": a small orbit + pan
+ * that is zero at both ends of the hold, so nothing jumps when a glide starts or ends.
+ */
 function stationPose(path, p, outPos, outTarget) {
-  const { stops, pos, tgt } = path;
+  const { stops, tgt, sph } = path;
   const n = stops.length;
   const q = THREE.MathUtils.clamp(p, 0, n - 1);
   const i = Math.min(Math.floor(q), n - 1);
   const f = q - i;
-  let s, drift;
+  let k = 0;
+  let breath = 0;
   if (i === n - 1 || f <= HOLD) {
-    s = i;
-    drift = Math.min(f / HOLD, 1) * 2 - 1;
+    breath = Math.sin(Math.PI * Math.min(f / HOLD, 1));
   } else {
-    const k = smooth((f - HOLD) / (1 - HOLD));
-    s = i + k;
-    drift = 1 - 2 * k;
+    k = smooth((f - HOLD) / (1 - HOLD));
   }
-  if (n === 1) {
-    outPos.copy(pos.points[0]);
-    outTarget.copy(tgt.points[0]);
-  } else {
-    pos.getPoint(s / (n - 1), outPos);
-    tgt.getPoint(s / (n - 1), outTarget);
+
+  const a = sph[i];
+  const b = sph[Math.min(i + 1, n - 1)];
+  if (n === 1) outTarget.copy(tgt.points[0]);
+  else tgt.getPoint((i + k) / (n - 1), outTarget);
+
+  const travel = a.target.distanceTo(b.target);
+  const pullBack = 1 + PULL_BACK * Math.sin(Math.PI * k) * Math.min(travel / 2, 1);
+  const d = THREE.MathUtils.lerp(a.d, b.d, k) * pullBack;
+  const az = a.az + angleDelta(a.az, b.az) * k + breath * BREATH_ORBIT;
+  const el = THREE.MathUtils.lerp(a.el, b.el, k) + Math.sin(Math.PI * k) * PULL_BACK_LIFT;
+
+  outPos.set(
+    outTarget.x + Math.sin(az) * Math.cos(el) * d,
+    outTarget.y + Math.sin(el) * d,
+    outTarget.z + Math.cos(az) * Math.cos(el) * d,
+  );
+
+  // Sideways drift along the camera's right axis, moving target and camera together.
+  if (breath) {
+    const pan = breath * BREATH_PAN;
+    const rx = Math.cos(az), rz = -Math.sin(az);
+    outPos.x += rx * pan;
+    outPos.z += rz * pan;
+    outTarget.x += rx * pan;
+    outTarget.z += rz * pan;
   }
-  // Micro-movement: orbit the camera around its target by up to ±2.5° as the section scrolls.
-  const angle = drift * (ORBIT / 2);
-  const dx = outPos.x - outTarget.x, dz = outPos.z - outTarget.z;
-  const cos = Math.cos(angle), sin = Math.sin(angle);
-  outPos.x = outTarget.x + dx * cos + dz * sin;
-  outPos.z = outTarget.z - dx * sin + dz * cos;
 }
+
+const easeInOutCubic = (x) => {
+  const t = THREE.MathUtils.clamp(x, 0, 1);
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+};
 
 function setNear(camera, near) {
   if (camera.near === near) return;
@@ -154,18 +192,17 @@ function CameraRig({ stops, getProgress, reduced, move, shown, onDoorOpen, onSwa
   const look = useRef(new THREE.Vector3());
   const wantP = useMemo(() => new THREE.Vector3(), []);
   const wantT = useMemo(() => new THREE.Vector3(), []);
+  const aheadV = useMemo(() => new THREE.Vector3(), []);
   const ready = useRef(false);
   const tr = useRef(null);
 
   const path = useMemo(() => {
     if (!stops.length) return null;
-    const pts = (k) => stops.map((s) => v3(s[k]));
-    const pos = pts("camera");
-    const tgt = pts("target");
+    const tgt = stops.map((s) => v3(s.target));
     return {
       stops,
-      pos: pos.length > 1 ? new THREE.CatmullRomCurve3(pos, false, "centripetal") : { points: pos },
       tgt: tgt.length > 1 ? new THREE.CatmullRomCurve3(tgt, false, "centripetal") : { points: tgt },
+      sph: stops.map((s, i) => ({ target: tgt[i], ...toSpherical(v3(s.camera), tgt[i]) })),
     };
   }, [stops]);
 
@@ -182,67 +219,62 @@ function CameraRig({ stops, getProgress, reduced, move, shown, onDoorOpen, onSwa
   const startMove = () => {
     const from = ROOMS[move.from], to = ROOMS[move.to];
     const exitDoor = from ? pickDoor(from.doors, move.to) : null;
-    const plan = { key: move.key, to: move.to, from: move.from, t: 0, opened: false };
+    const plan = { key: move.key, to: move.to, from: move.from, t: 0, opened: false, swapped: false };
     plan.enterDoor = to ? pickDoor(to.doors, move.from) : null;
     if (reduced || !exitDoor) {
       plan.phase = "fadeOut";
     } else {
       const { c, n, latch } = doorFrame(exitDoor);
       const side = latch.clone().multiplyScalar(0.12);
-      const front = c.clone().addScaledVector(n, 1.7).add(side).setY(1.5);
-      plan.phase = "approach";
+      const front = c.clone().addScaledVector(n, 1.4).add(side).setY(1.48);
+      const pass = c.clone().addScaledVector(n, -0.15).add(side).setY(1.45);
+      plan.phase = "timeline";
       plan.doorId = exitDoor.id;
-      plan.approach = new THREE.CatmullRomCurve3(
-        [camera.position.clone(), camera.position.clone().lerp(front, 0.55).setY(Math.max(1.5, camera.position.y * 0.7)), front],
-        false,
-        "centripetal",
-      );
-      plan.through = new THREE.CatmullRomCurve3(
-        [front, c.clone().addScaledVector(n, 0.45).add(side).setY(1.45), c.clone().addScaledVector(n, -0.05).add(side).setY(1.45)],
-        false,
-        "centripetal",
-      );
-      plan.lookFrom = look.current.clone();
-      plan.lookDoor = c.clone().setY(1.3);
-      plan.lookBeyond = c.clone().addScaledVector(n, -3).setY(1.35);
+      plan.pass = pass;
+      plan.exitDir = n.clone().negate(); // straight through the opening
+
+      // Leg 1: room from -> door threshold. The midpoint eases down toward eye height.
+      const mid = camera.position.clone().lerp(front, 0.5);
+      mid.y = THREE.MathUtils.lerp(camera.position.y, 1.5, 0.6);
+      plan.leg1 = new THREE.CatmullRomCurve3([camera.position.clone(), mid, front, pass], false, "centripetal");
+
+      // Destination in the next room:
+      const destStop = to?.stops[0];
+      const destPos = destStop ? v3(destStop.camera) : camera.position.clone();
+      const destLook = destStop ? v3(destStop.target) : look.current.clone();
+      plan.destPos = destPos;
+      plan.destLook = destLook;
+
+      // Leg 2: door threshold -> destination station
+      let enterStart = pass, enterClear = front;
+      if (plan.enterDoor) {
+        const inFrame = doorFrame(plan.enterDoor);
+        const inSide = inFrame.latch.clone().multiplyScalar(0.12);
+        enterStart = inFrame.c.clone().addScaledVector(inFrame.n, -0.15).add(inSide).setY(1.45);
+        enterClear = inFrame.c.clone().addScaledVector(inFrame.n, 1.2).add(inSide).setY(1.48);
+      }
+      const mid2 = destPos.clone().lerp(enterClear, 0.4);
+      mid2.y = THREE.MathUtils.lerp(destPos.y, 1.5, 0.6);
+      plan.leg2 = new THREE.CatmullRomCurve3([enterStart, enterClear, mid2, destPos], false, "centripetal");
+
+      // Arc lengths: the camera keeps one speed across both legs, so there is no jolt at the swap.
+      plan.L1 = Math.max(plan.leg1.getLength(), 1e-3);
+      plan.L2 = Math.max(plan.leg2.getLength(), 1e-3);
+      plan.startLook = look.current.clone();
+      plan.closeStart = Infinity;
+
       setNear(camera, NEAR_TRANSIT);
+      onDoorOpen(plan.doorId);
+      useSceneStore.getState().setDoorTransition({ doorId: plan.doorId, time: 0, active: true });
     }
     tr.current = plan;
-  };
-
-  const startEnter = (plan) => {
-    const first = path?.stops[0];
-    if (!first) return finish();
-    stationPose(path, 0, wantP, wantT);
-    if (reduced || !plan.enterDoor) {
-      camera.position.copy(wantP);
-      look.current.copy(wantT);
-      camera.lookAt(look.current);
-      plan.phase = "fadeIn";
-      plan.t = 0;
-      return;
-    }
-    const { c, n, latch } = doorFrame(plan.enterDoor);
-    const side = latch.clone().multiplyScalar(0.12);
-    const start = c.clone().addScaledVector(n, -0.05).add(side).setY(1.45);
-    plan.enter = new THREE.CatmullRomCurve3(
-      [start, c.clone().addScaledVector(n, 0.6).add(side).setY(1.45), c.clone().addScaledVector(n, 1.8).setY(1.5), wantP.clone()],
-      false,
-      "centripetal",
-    );
-    plan.lookFrom = c.clone().addScaledVector(n, 3).setY(1.35);
-    plan.lookTo = wantT.clone();
-    camera.position.copy(start);
-    look.current.copy(plan.lookFrom);
-    camera.lookAt(look.current);
-    plan.phase = "enter";
-    plan.t = 0;
   };
 
   const finish = () => {
     tr.current = null;
     fade(0);
     setNear(camera, NEAR);
+    useSceneStore.getState().setDoorTransition({ doorId: null, time: 0, active: false });
     onDone();
   };
 
@@ -253,48 +285,65 @@ function CameraRig({ stops, getProgress, reduced, move, shown, onDoorOpen, onSwa
 
     if (plan) {
       plan.t += dt;
-      if (plan.phase === "approach") {
-        const k = smooth(plan.t / APPROACH);
-        plan.approach.getPoint(k, camera.position);
-        look.current.lerpVectors(plan.lookFrom, plan.lookDoor, k);
-        if (!plan.opened && plan.t >= APPROACH - OPEN_LEAD) {
-          plan.opened = true;
-          onDoorOpen(plan.doorId);
+
+      if (plan.phase === "fadeOut") {
+        fade(plan.t / 0.2);
+        if (plan.t >= 0.2 && !plan.swapped) {
+          plan.swapped = true;
+          onSwap(plan.to, null);
         }
-        if (plan.t >= APPROACH) Object.assign(plan, { phase: "dwell", t: 0 });
-      } else if (plan.phase === "dwell") {
-        if (plan.t >= DWELL) Object.assign(plan, { phase: "through", t: 0 });
-      } else if (plan.phase === "through") {
-        const k = smooth(plan.t / THROUGH);
-        plan.through.getPoint(k, camera.position);
-        look.current.lerpVectors(plan.lookDoor, plan.lookBeyond, k);
-        fade((plan.t - (THROUGH - FADE)) / FADE);
-        if (plan.t >= THROUGH) {
-          fade(1);
-          Object.assign(plan, { phase: "swap", t: 0, swapped: false });
-        }
-      } else if (plan.phase === "fadeOut") {
-        fade(plan.t / FADE);
-        if (plan.t >= FADE) Object.assign(plan, { phase: "swap", t: 0, swapped: false });
+        if (plan.t >= 0.4) return finish();
+        camera.lookAt(look.current);
+        return;
       }
-      if (plan.phase === "swap") {
+
+      // One eased move over both legs (slow start, slow landing), measured in metres of path.
+      const { flyStart, flyEnd, closeAt, closeAfterSwap, closeEnd, holdOpen } = DOOR_SWING_TIMELINE_CONFIG.camera;
+      const u = easeInOutCubic((plan.t - flyStart) / (flyEnd - flyStart));
+      const s = u * (plan.L1 + plan.L2);
+
+      if (s < plan.L1) {
+        plan.leg1.getPointAt(s / plan.L1, camera.position);
+        const a = s + LOOK_AHEAD;
+        if (a < plan.L1) plan.leg1.getPointAt(a / plan.L1, aheadV);
+        else aheadV.copy(plan.pass).addScaledVector(plan.exitDir, a - plan.L1);
+      } else {
         if (!plan.swapped) {
           plan.swapped = true;
+          // The door we come in through starts closing once the camera is well clear of it.
+          plan.closeStart = Math.max(closeAt, plan.t + closeAfterSwap);
           onSwap(plan.to, plan.enterDoor?.id ?? null);
-        } else if (shown === plan.to && path) {
-          startEnter(plan);
         }
-      } else if (plan.phase === "enter") {
-        const k = smooth(plan.t / ENTER);
-        plan.enter.getPoint(k, camera.position);
-        look.current.lerpVectors(plan.lookFrom, plan.lookTo, smooth(plan.t / (ENTER * 0.8)));
-        fade(1 - plan.t / FADE);
-        if (plan.t >= ENTER) return finish();
-      } else if (plan.phase === "fadeIn") {
-        fade(1 - plan.t / FADE);
-        if (plan.t >= FADE) return finish();
+        const s2 = s - plan.L1;
+        plan.leg2.getPointAt(Math.min(s2 / plan.L2, 1), camera.position);
+        const a = s2 + LOOK_AHEAD;
+        if (a < plan.L2) plan.leg2.getPointAt(a / plan.L2, aheadV);
+        else aheadV.copy(plan.destLook);
       }
+
+      // Look along the path, blending in from where we were looking and out to the first station.
+      look.current.copy(aheadV);
+      look.current.lerp(plan.startLook, 1 - smooth(u / 0.22));
+      look.current.lerp(plan.destLook, smooth((u - 0.62) / 0.38));
       camera.lookAt(look.current);
+
+      // Dip to the overlay right at the swap so the room change never shows.
+      fade(1 - smooth(Math.abs(s - plan.L1) / SWAP_FADE));
+
+      // Door clock: the exit door runs the open half; after the swap the entry door holds open,
+      // then closes behind the camera.
+      const doorTime = !plan.swapped
+        ? plan.t
+        : plan.t < plan.closeStart
+          ? holdOpen
+          : closeAt + (plan.t - plan.closeStart);
+      useSceneStore.getState().setDoorTransition({
+        doorId: plan.swapped ? (plan.enterDoor?.id ?? plan.doorId) : plan.doorId,
+        time: doorTime,
+        active: true,
+      });
+
+      if (u >= 1 && doorTime >= closeEnd) return finish();
       return;
     }
 

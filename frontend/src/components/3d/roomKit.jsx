@@ -27,6 +27,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer, OrbitControls, RoundedBox } from "@react-three/drei";
 import * as THREE from "three";
+import { useSceneStore } from "../../store/sceneStore";
+import { getDoorTimelineState } from "./motionConfig";
 
 /* ================================ constants ================================ */
 export const ROOM = { W: 6, D: 5, H: 3, T: 0.16, SLAB: 0.16 };
@@ -43,9 +45,43 @@ export const C = {
   chrome: "#dfe3e6",
   dark: "#2f3740",
   leaf: "#4f7d4b",
-  upholstery: "#efe5d4",
+  upholstery: "#7f998c", // Muted sage perforated upholstery
   mintGlow: "#3fbf8f",
 };
+
+/* =========================== PBR Base64 Data Maps =========================== */
+const UPHOLSTERY_NORMAL_BASE64 =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABc0lEQVR42l2TvaoCMRCF84aW2wg+gLBgrXFj1FZY8AEEmy19MLGzuSDjfMk9u3tvMUzm78xJZhJiNMvZ7Hw2O53Mdruqt9t67roq+331I4dDrSEnUEgCTs4EEIqVKFBAOB+PVRMLKZnBAjQS1BGbBM7EKVAueQIuACSBiqYTTFSkayH4lAM7agoABaKFTQcBiCparAQMyAiAQ/TxEUwOkjYf6+LEUsDEqQkYdCRIB12hb3/s2rwsLZ62dt26rceeTyuM3VKlhzN74rB+2W3lAMu3rVw3bsduaiZGga7QwiCIXNLHHulp9/QuwEvXC7c37qeBcsseiLqYFAZ+Hq7O4OYM7s7AdeN2/GWpMY5T0IYRwCbQ9/4GgwM8/A1ct27rofXw6KC5aoy6Dh0ScvEp5L/31sKVTdQ/0Py191xH/0RbimjJlBN0f22ZGGmBdCauKwigXAFDI5zPGarlQfPUDdGu4Kc2YHAgqBX+v3Fa3/lHUoMvWQH8q1I51lYAAAAASUVORK5CYII=";
+
+const UPHOLSTERY_ROUGHNESS_BASE64 =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABEUlEQVR42oWTSQ6EMAwE/f9HAglheQOXjMpSoQgxMwcri93txmlinudObNvWW2u57vvej+PopZR+nmeu1LCSd88aFK7rmgDCJEDuCc611mxgbpqm3IeXFhEUsNKNVZUok5BcEizLcgMpooA7lXDPGQBhvZ8cfisAZDkDkuS4IzgTEKBQNfkJMFIEwE6QXtd1ByAHCpiV+gDo1FFBB84j2IDYgdswZ+BLAPwGNsg7H/ahNF8Dwl8EdHaQOYNRutP9R6DxqE8Cuivfp3oD61SVQhYC9ICmepLoDx2qI0PnSeB7ux87Ojj2ksXoPJPj52g0/UEdTf13wgE6FF34tLLPrPFUHDpKAgoYjmQq84dSunb+ALQbsd+K9sKXAAAAAElFTkSuQmCC";
+
+const SURGICAL_STEEL_NORMAL_BASE64 =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAS0lEQVR42q3RSwqAQAwE0T62CGrD+Dn2WHeoWTyoVSBJus9ppA8hpBshpIMQ0o8QFgwoIcS/8SaE9CKE9CWEBUfUb9QrnISQHoTwA/ZM/0/UOo+oAAAAAElFTkSuQmCC";
+
+const SURGICAL_STEEL_ROUGHNESS_BASE64 =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAUklEQVR42qXSwQkAIBADwbR0+FAUf56CYP/lxCL2MQ1sojGGCd17Tei9Z0IRYUKlFBNaa5lQrdWEzjkm1Hs3ocw0ob23CR6xtWaCrzDnNIGv/AFfO7mgHj9NUQAAAABJRU5ErkJggg==";
+
+const PORCELAIN_NORMAL_BASE64 =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAATElEQVR42q3SSwqAQBAD0RzbHxhBxVuPdYeaxYNaNk3SjmGkDyGkHyFMuED/YCOEdCGEdCeE9CKE9CWECTu4CSE9CWHCDlZCSA9C+AGF+/4fKuS0bwAAAABJRU5ErkJggg==";
+
+const PORCELAIN_ROUGHNESS_BASE64 =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAA/0lEQVR42l2TUQ6FMAgEOZNatd7/Xn0ZkjH7/KilsN3CgnVd17rve40x1nmevXPetm0dx9EL/77va87ZcWLY3C2dALyATfB5ngb7COckZTUBBkEWYAjxJyEE7CzwxCEvgwK8YJqZETa7WfFgZyABiwC+JONsqfi8g118ksCg6ZqNOF7Fx94aCLAuVU5Rs8S0wZZ1Wa8kX8Wz1Zb1lkBA5bOl9trdOYGcvedAAhkFqrq62O7MqDNw8nTYvmyVXVE8sa1BXvRFRTUjX8Vvtu8op9r22WkDoNrfIRP71wUn7juV+uyAGWJXpuo/kf1XD2dAAcWXrTEDbWu2jPxDnQfWD+a8oER+vak+AAAAAElFTkSuQmCC";
+
+const QUARTZ_COLOR_BASE64 =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAkUlEQVR42pWSsQ6AIAxE7/+/w9HJL3Fy8B9cTJwxDE3Ocgc4NCnH8WgpOI+9bOtSnvsqNee1irrPOZxZ6UpDpobRgbMXjpwPRWQ/HHmkN4BRqLa6j6haU9VAGfhgzUOPETMIo7LVzQ1gZgpcAWtQpt7rWwCDcp+qylhjZt68l0HoTYA1/okfgBLdjRn46ye6Fl++7q8WaSb2vQAAAABJRU5ErkJggg==";
+
+const QUARTZ_NORMAL_BASE64 =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAiUlEQVR42q2SSw6AIAxEPTOgBPwRjPjDM1dZsNBUrehiIC3p5NFMZgyAYADhjqr4sb5TNnT4w4r0nEcM0GG5U4xEgnD4hY4ctPAHgjciG4gSoB8QA5dfDymdStBcmxTuxResJBLMnr60uk5cYpTsCAYcCVF7qiebSMDYA4ESyCD7ECTfIj39Y5Q3IDT97Bd5SBkAAAAASUVORK5CYII=";
+
+const QUARTZ_ROUGHNESS_BASE64 =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAX0lEQVR42mPw8vL6n5OT8x9EwzA6Hx9mwKUYmzg2MQZcmol1BQOpTkZXz0CKRpwuINZWrGGAz/nEeI2BkEZCUcxAbGBRLRZIcgHZBhCTCmF86ruA2DxAdBgQMpDipAwAtMboOBFB98wAAAAASUVORK5CYII=";
+
+const OAK_FLOOR_NORMAL_BASE64 =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAX0lEQVR42u3WMREAMAhDUQzhqkLQVgkYotFAlg5/yJp71w4hKu9s03kmFacjqma26bqTitMBAAAAAAAAfABoFSzTrTlWnI5w99y9J8J9QvcLAQAAAAAAgA8A5p6798QDtI7JfoqU5/cAAAAASUVORK5CYII=";
+
+const OAK_FLOOR_ROUGHNESS_BASE64 =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAARUlEQVR42u3VoRUAMAwC0ey/DBtkMEyqukAriDhxlvcdZXuSlaR57Y78bAAAAAAAAAB5QPyOVwC6OxIAAAAAAACwB5DsAEANHFCjarfrAAAAAElFTkSuQmCC";
 
 /* ================================ textures ================================= */
 const cache = new Map();
@@ -53,6 +89,18 @@ const cached = (key, make) => {
   if (!cache.has(key)) cache.set(key, make());
   return cache.get(key);
 };
+
+const texLoader = new THREE.TextureLoader();
+function dataTexture(base64, { color = false, repeat } = {}) {
+  const t = texLoader.load(base64);
+  t.colorSpace = color ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  if (repeat) {
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(repeat[0], repeat[1]);
+  }
+  t.anisotropy = 8;
+  return t;
+}
 
 export function rng(seed = 1) {
   let s = seed % 2147483647;
@@ -659,9 +707,19 @@ export const tex = {
       return {
         map: canvasTexture(L.S, L.S, (g) => drawPlanks(g, L, false), { repeat: [rx, ry] }),
         bump: canvasTexture(L.S, L.S, (g) => drawPlanks(g, L, true), { color: false, repeat: [rx, ry] }),
-        rough: canvasTexture(L.S, L.S, (g) => drawPlankRough(g, L), { color: false, repeat: [rx, ry] }),
+        rough: dataTexture(OAK_FLOOR_ROUGHNESS_BASE64, { repeat: [rx, ry] }),
+        normal: dataTexture(OAK_FLOOR_NORMAL_BASE64, { repeat: [rx, ry] }),
       };
     }),
+  perforatedNormal: (rx = 12, ry = 12) => cached(`perfNorm:${rx}:${ry}`, () => dataTexture(UPHOLSTERY_NORMAL_BASE64, { repeat: [rx, ry] })),
+  perforatedRough: (rx = 12, ry = 12) => cached(`perfRough:${rx}:${ry}`, () => dataTexture(UPHOLSTERY_ROUGHNESS_BASE64, { repeat: [rx, ry] })),
+  surgicalNormal: (rx = 1, ry = 16) => cached(`surgNorm:${rx}:${ry}`, () => dataTexture(SURGICAL_STEEL_NORMAL_BASE64, { repeat: [rx, ry] })),
+  surgicalRough: (rx = 1, ry = 16) => cached(`surgRough:${rx}:${ry}`, () => dataTexture(SURGICAL_STEEL_ROUGHNESS_BASE64, { repeat: [rx, ry] })),
+  porcelainNormal: (rx = 2, ry = 4) => cached(`porcNorm:${rx}:${ry}`, () => dataTexture(PORCELAIN_NORMAL_BASE64, { repeat: [rx, ry] })),
+  porcelainRough: (rx = 2, ry = 2) => cached(`porcRough:${rx}:${ry}`, () => dataTexture(PORCELAIN_ROUGHNESS_BASE64, { repeat: [rx, ry] })),
+  quartzColor: (rx = 4, ry = 4) => cached(`quartzCol:${rx}:${ry}`, () => dataTexture(QUARTZ_COLOR_BASE64, { color: true, repeat: [rx, ry] })),
+  quartzNormal: (rx = 4, ry = 4) => cached(`quartzNorm:${rx}:${ry}`, () => dataTexture(QUARTZ_NORMAL_BASE64, { repeat: [rx, ry] })),
+  quartzRough: (rx = 4, ry = 4) => cached(`quartzRough:${rx}:${ry}`, () => dataTexture(QUARTZ_ROUGHNESS_BASE64, { repeat: [rx, ry] })),
   plaster: (rx = 2, ry = 1) => cached(`plaster:${rx}:${ry}`, () => canvasTexture(256, 256, drawPlaster, { color: false, repeat: [rx, ry] })),
   fabric: (rx = 6, ry = 6) => cached(`fabric:${rx}:${ry}`, () => canvasTexture(128, 128, drawFabric, { color: false, repeat: [rx, ry] })),
   leather: (rx = 3, ry = 3) => cached(`leather:${rx}:${ry}`, () => canvasTexture(256, 256, drawLeather, { color: false, repeat: [rx, ry] })),
@@ -694,10 +752,41 @@ export const tex = {
 
 /* =============================== primitives =============================== */
 /**
- * Standard material shorthand. rmap = roughness map (multiplies r).
- * cc = clearcoat (0–1): switches to meshPhysicalMaterial for porcelain, enamel, glazed shades.
+ * Standard material shorthand. Supports PBR normalMap, roughnessMap, metalnessMap,
+ * and cc = clearcoat (0–1): switches to meshPhysicalMaterial for porcelain, enamel, glazed shades.
  */
-export function Mat({ c = "#ffffff", r = 0.7, m = 0, map, bump, bs = 1, rmap, e, ei = 1, emap, o, side, cc, ccr = 0.1, ...rest }) {
+export function Mat({
+  c = "#ffffff",
+  r = 0.7,
+  m = 0,
+  map,
+  bump,
+  bs = 1,
+  rmap,
+  roughnessMap,
+  normal,
+  normalMap,
+  normalScale,
+  metalnessMap,
+  e,
+  ei = 1,
+  emap,
+  o,
+  side,
+  cc,
+  ccr = 0.1,
+  ...rest
+}) {
+  const normMap = normal ?? normalMap ?? null;
+  const rMap = rmap ?? roughnessMap ?? null;
+  const nScale = normalScale
+    ? Array.isArray(normalScale)
+      ? new THREE.Vector2(normalScale[0], normalScale[1])
+      : normalScale
+    : normMap
+    ? new THREE.Vector2(1, 1)
+    : null;
+
   const props = {
     color: c,
     roughness: r,
@@ -705,7 +794,10 @@ export function Mat({ c = "#ffffff", r = 0.7, m = 0, map, bump, bs = 1, rmap, e,
     map: map ?? null,
     bumpMap: bump ?? null,
     bumpScale: bs,
-    roughnessMap: rmap ?? null,
+    roughnessMap: rMap,
+    metalnessMap: metalnessMap ?? null,
+    normalMap: normMap,
+    normalScale: nScale,
     emissive: e ?? "#000000",
     emissiveMap: emap ?? null,
     emissiveIntensity: e ? ei : 0,
@@ -718,22 +810,69 @@ export function Mat({ c = "#ffffff", r = 0.7, m = 0, map, bump, bs = 1, rmap, e,
   return <meshStandardMaterial {...props} />;
 }
 
-/** Polished chrome; the brushed roughness map streaks the highlights instead of mirroring. */
-export function Chrome({ c = C.chrome, r = 0.22 }) {
-  return <Mat c={c} m={0.92} r={Math.min(1, r * 1.35)} rmap={tex.brushed()} />;
+/** Polished surgical steel: low roughness, high metalness, precise anisotropic brushed grain. */
+export function Chrome({ c = "#dce2e6", r = 0.20 }) {
+  return (
+    <Mat
+      c={c}
+      m={0.98}
+      r={r}
+      rmap={tex.surgicalRough(1, 16)}
+      normal={tex.surgicalNormal(1, 16)}
+      normalScale={[0.2, 0.2]}
+    />
+  );
 }
 
-/** Glazed porcelain / enamel (dental chair shell, cuspidor, tooth models, lamp shades). */
-export function Porcelain({ c = "#f6f4ef", r = 0.32 }) {
-  return <Mat c={c} r={r} cc={1} ccr={0.1} />;
+/** Glazed dental porcelain / enamel with active clearcoat for specular depth. */
+export function Porcelain({ c = "#f7f5ec", r = 0.22, cc = 1.0, ccr = 0.1 }) {
+  return (
+    <Mat
+      c={c}
+      r={r}
+      m={0.0}
+      cc={cc}
+      ccr={ccr}
+      normal={tex.porcelainNormal(4, 4)}
+      normalScale={[0.15, 0.15]}
+      rmap={tex.porcelainRough(4, 4)}
+    />
+  );
 }
 
-/** Upholstery: fabric weave or pebbled leather, with a stronger bump than flat paint. */
-export function Upholstery({ c = C.upholstery, kind = "leather", r }) {
+/** Upholstery: muted sage with perforated grain normal map and high roughness map. */
+export function Upholstery({ c = "#7f998c", kind = "perforated", r }) {
+  if (kind === "perforated") {
+    return (
+      <Mat
+        c={c}
+        r={r ?? 0.88}
+        m={0.02}
+        normal={tex.perforatedNormal(12, 12)}
+        normalScale={[0.85, 0.85]}
+        rmap={tex.perforatedRough(12, 12)}
+      />
+    );
+  }
   return kind === "leather" ? (
     <Mat c={c} r={r ?? 0.45} bump={tex.leather()} bs={0.35} />
   ) : (
     <Mat c={c} r={r ?? 0.92} bump={tex.fabric(8, 8)} bs={0.9} />
+  );
+}
+
+/** Speckled white quartz countertop with mineral aggregate flecks and differential roughness. */
+export function Quartz({ c = "#f4f2ec", r = 0.32, rx = 4, ry = 4 }) {
+  return (
+    <Mat
+      c={c}
+      m={0.0}
+      r={r}
+      map={tex.quartzColor(rx, ry)}
+      normal={tex.quartzNormal(rx, ry)}
+      normalScale={[0.28, 0.28]}
+      rmap={tex.quartzRough(rx, ry)}
+    />
   );
 }
 
@@ -893,7 +1032,7 @@ export function RoomShell({ leftColor = C.cream, backColor = C.cream, wainscot =
         {cut}
       </Box>
       <Plane s={[W, D]} p={[0, 0.002, 0]} rot={[-Math.PI / 2, 0, 0]}>
-        <Mat map={floor.map} bump={floor.bump} bs={0.8} rmap={floor.rough} r={0.62} />
+        <Mat map={floor.map} normal={floor.normal} normalScale={[1.2, 1.2]} rmap={floor.rough} r={0.72} m={0.0} />
       </Plane>
       <Box s={[W + t, H, t]} p={[-t / 2, H / 2, -D / 2 - t / 2]}>
         {cut}
@@ -946,7 +1085,7 @@ export function Pickable({ id, onSelect, highlighted = false, ring = 0.6, ringAt
   );
 }
 
-export function Plaque({ text, p }) {
+export function Plaque({ text, p, matRef, lightRef }) {
   const map = tex.plaque(text);
   return (
     <group position={p}>
@@ -954,8 +1093,9 @@ export function Plaque({ text, p }) {
         <Mat c="#ffffff" r={0.4} />
       </Box>
       <Plane s={[0.11, 0.11]} p={[0, 0, 0.0125]}>
-        <Mat map={map} r={0.5} />
+        <meshStandardMaterial ref={matRef} map={map} roughness={0.5} emissive={C.mintGlow} emissiveIntensity={0} />
       </Plane>
+      <pointLight ref={lightRef} position={[0, 0, 0.08]} intensity={0} color={C.mintGlow} distance={0.8} decay={2} />
     </group>
   );
 }
@@ -968,6 +1108,8 @@ export function Plaque({ text, p }) {
 export function Door({ id, plaque, plaqueSide = 1, frame = C.white, leaf = C.white, glass = [0.5, 1.5], highlighted = false, open = 0, onSelect }) {
   const [hover, setHover] = useState(false);
   const hinge = useRef();
+  const plaqueMat = useRef();
+  const plaqueLight = useRef();
   const frost = tex.frost();
   const glow = hover || highlighted;
   // A door that mounts open (the camera is coming through it) starts open instead of swinging.
@@ -975,7 +1117,22 @@ export function Door({ id, plaque, plaqueSide = 1, frame = C.white, leaf = C.whi
     if (hinge.current) hinge.current.rotation.y = -open * 1.25;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useFrame((_, dt) => {
-    if (hinge.current) hinge.current.rotation.y = THREE.MathUtils.damp(hinge.current.rotation.y, -open * 1.25, 5, dt);
+    const dtState = useSceneStore.getState().doorTransition;
+    if (dtState && dtState.active && dtState.doorId === id) {
+      const anim = getDoorTimelineState(dtState.time);
+      if (hinge.current) hinge.current.rotation.y = anim.doorRotationY;
+      if (plaqueMat.current) plaqueMat.current.emissiveIntensity = anim.plaqueEmissive;
+      if (plaqueLight.current) plaqueLight.current.intensity = anim.plaqueEmissive * 0.45;
+    } else {
+      if (hinge.current) hinge.current.rotation.y = THREE.MathUtils.damp(hinge.current.rotation.y, -open * 1.25, 5, dt);
+      const targetEmissive = glow ? 0.35 : 0;
+      if (plaqueMat.current) {
+        plaqueMat.current.emissiveIntensity = THREE.MathUtils.damp(plaqueMat.current.emissiveIntensity, targetEmissive, 8, dt);
+      }
+      if (plaqueLight.current) {
+        plaqueLight.current.intensity = THREE.MathUtils.damp(plaqueLight.current.intensity, targetEmissive * 0.2, 8, dt);
+      }
+    }
   });
   const casing = <Mat c={frame} r={0.45} e={glow ? C.mintGlow : undefined} ei={0.25} />;
   const chrome = <Chrome r={0.22} />;
@@ -999,7 +1156,7 @@ export function Door({ id, plaque, plaqueSide = 1, frame = C.white, leaf = C.whi
         <Cyl a={[0.028, 0.028, 0.012, 20]} p={[0.8, 1.0, 0.026]} rot={[Math.PI / 2, 0, 0]}>{chrome}</Cyl>
         <Box s={[0.13, 0.018, 0.018]} p={[0.75, 1.0, 0.042]} r={0.007}>{chrome}</Box>
       </group>
-      {plaque && <Plaque text={plaque} p={[plaqueSide * 0.68, 1.55, 0]} />}
+      {plaque && <Plaque text={plaque} p={[plaqueSide * 0.68, 1.55, 0]} matRef={plaqueMat} lightRef={plaqueLight} />}
     </group>
   );
 }
@@ -1188,7 +1345,7 @@ export function WallMonitor({ w = 0.95, h = 0.56, map }) {
         <Mat c={C.dark} m={0.5} r={0.4} />
       </Box>
       <Box s={[w, h, 0.03]} p={[0, 0, 0.065]} r={0.008}>
-        <Mat c="#1d232a" m={0.3} r={0.35} />
+        <Porcelain c="#1a2026" r={0.2} cc={1.0} ccr={0.08} />
       </Box>
       <Plane s={[w - 0.04, h - 0.04]} p={[0, 0, 0.081]}>
         <Mat c="#000000" e="#ffffff" emap={map} ei={1} r={0.25} />

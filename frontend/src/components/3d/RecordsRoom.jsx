@@ -11,11 +11,11 @@ import {
 
 /** One stop per content section on /records, framed tight on its focal object (fov 24). */
 export const STOPS = [
-  { id: "intro",      ...view([-0.2, 1.0, -1.3], 5.8, 42, 20) },
-  { id: "annual-max", ...view([1.34, 0.86, -0.82], 1.3, 40, 22), focus: "jar" },
-  { id: "history",    ...view([-1.85, 0.75, -2.1], 3.2, 25, 14), focus: "cabinets" },
-  { id: "reminders",  ...view([0.9, 1.75, -2.45], 2.6, 12, 6),  focus: "board" },
-  { id: "missing",    ...view([-0.2, 1.0, -1.3], 5.8, 42, 20) },
+  { id: "intro",      ...view([-0.3, 1.0, -1.2], 7.6, 40, 24) },
+  { id: "annual-max", ...view([1.3, 0.9, -0.85], 1.8, 30, 22), focus: "jar" },
+  { id: "history",    ...view([-1.85, 0.75, -2.0], 3.9, 30, 12), focus: "cabinets" },
+  { id: "reminders",  ...view([1.15, 1.95, -2.45], 3.3, 18, 4),  focus: "board" },
+  { id: "missing",    ...view([-0.3, 1.0, -1.2], 7.6, 40, 24) },
 ];
 
 /** Doors out of this room (id = the room it leads to). Also used for the camera fly-through. */

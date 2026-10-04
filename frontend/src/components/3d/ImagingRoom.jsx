@@ -10,12 +10,12 @@ import {
 
 /** One stop per content section on /imaging, framed tight on its focal object (fov 24). */
 export const STOPS = [
-  { id: "intro",      ...view([-0.1, 1.2, -1.6], 5.8, 45, 20) },
-  { id: "ask",        ...view([0.95, 1.6, -2.45], 3.4, 30, 10), focus: "monitor" },
-  { id: "coverage",   ...view([-0.5, 1.4, -1.9], 3.2, 40, 12), focus: "xray" },
+  { id: "intro",      ...view([-0.1, 1.2, -1.6], 7.0, 45, 22) },
+  { id: "ask",        ...view([0.95, 1.7, -2.45], 3.4, -8, 10), focus: "monitor" },
+  { id: "coverage",   ...view([-0.5, 1.2, -1.9], 5.0, 35, 10), focus: "xray" },
   { id: "limits",     ...view([0.95, 1.7, -2.45], 2.4, 15, 6), focus: "monitor" },
-  { id: "fine-print", ...view([-2.95, 1.5, -0.9], 2.8, 80, 8), focus: "aprons" },
-  { id: "missing",    ...view([-0.5, 1.4, -1.9], 3.2, 40, 12), focus: "xray" },
+  { id: "fine-print", ...view([-2.95, 1.5, -0.9], 3.0, 65, 8), focus: "aprons" },
+  { id: "missing",    ...view([-0.5, 1.2, -1.9], 5.0, 35, 10), focus: "xray" },
 ];
 
 /** Doors out of this room (id = the room it leads to). Also used for the camera fly-through. */

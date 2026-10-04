@@ -11,12 +11,12 @@ import {
 
 /** One stop per content <section> on /operatory, framed tight on its focal object (fov 24). */
 export const STOPS = [
-  { id: "intro",     ...view([-0.4, 1.0, -0.8], 6.5, 42, 22) },
-  { id: "explore",   ...view([-0.3, 0.9, -0.4], 5.0, 34, 20),  focus: "chair" },
-  { id: "describe",  ...view([-0.3, 0.85, -0.3], 3.6, 50, 24), focus: "chair" },
-  { id: "tooth-map", ...view([-2.95, 1.8, -1.0], 2.6, 80, 8),  focus: "monitor" },
-  { id: "planned",   ...view([0.9, 1.0, -2.0], 3.4, 20, 18) },
-  { id: "missing",   ...view([-0.3, 0.85, -0.3], 3.6, 50, 24), focus: "chair" },
+  { id: "intro",     ...view([-0.4, 1.0, -0.8], 7.0, 42, 22) },
+  { id: "explore",   ...view([-0.3, 0.8, -0.5], 4.4, 25, 16),  focus: "chair" },
+  { id: "describe",  ...view([-0.35, 0.85, -0.45], 3.4, 60, 28), focus: "chair" },
+  { id: "tooth-map", ...view([-2.95, 1.82, -1.0], 2.5, 55, 4),  focus: "monitor" },
+  { id: "planned",   ...view([0.9, 1.0, -2.0], 4.0, 25, 18) },
+  { id: "missing",   ...view([-0.35, 0.85, -0.45], 3.4, 60, 28), focus: "chair" },
 ];
 
 /** Doors out of this room (id = the room it leads to). Also used for the camera fly-through. */
@@ -27,9 +27,9 @@ export const DOORS = [
 
 const WAINSCOT = { h: 1.0, color: C.sage };
 const shell = <Mat c="#f6f4ef" r={0.35} />;
-const porcelain = <Porcelain c="#f6f4ef" r={0.32} />;
+const porcelain = <Porcelain c="#f7f5ec" r={0.22} />;
 const chrome = <Chrome r={0.2} />;
-const upholstery = <Upholstery c="#efe6d6" r={0.45} />;
+const upholstery = <Upholstery c="#7f998c" r={0.88} />;
 
 /** Dental chair, headrest toward −z, feet toward +z. */
 function DentalChair() {
@@ -72,7 +72,7 @@ function DentalChair() {
         <Rod key={i} from={[0.58 + i * 0.09, 0.9, -0.04]} to={[0.6 + i * 0.09, 1.08, -0.12]} r={0.009}>{chrome}</Rod>
       ))}
       <Box s={[0.24, 0.012, 0.14]} p={[0.72, 0.912, 0.14]}>
-        <Mat c="#cfeee4" r={0.4} />
+        <Chrome c="#dce2e6" r={0.18} />
       </Box>
     </group>
   );

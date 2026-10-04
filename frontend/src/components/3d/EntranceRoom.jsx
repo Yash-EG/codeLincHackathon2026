@@ -8,8 +8,8 @@ import {
 } from "./roomKit";
 
 export const STOPS = [
-  { id: "hero", ...view([0, 1.6, -1.8], 7.5, 35, 14) },
-  { id: "what", ...view([0, 1.4, -2.0], 4.0, 18, 8), focus: "doors" },
+  { id: "hero", ...view([0, 1.6, -1.8], 9.0, 35, 12) },
+  { id: "what", ...view([0, 1.4, -2.0], 5.6, 25, 8), focus: "doors" },
 ];
 
 const FRONT = -2.0; // z of the facade's front face

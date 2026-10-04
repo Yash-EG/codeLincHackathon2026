@@ -15,8 +15,8 @@ export const DOORS = [
 
 /** One stop per content <section> on /hallway. */
 export const STOPS = [
-  { id: "intro",     ...view([-0.4, 1.2, -1.2], 6.8, 40, 20) },
-  { id: "directory", ...view([0.3, 1.25, -2.4], 4.6, 15, 12), focus: "operatory" },
+  { id: "intro",     ...view([-0.4, 1.2, -1.2], 7.6, 40, 22) },
+  { id: "directory", ...view([0.3, 1.2, -2.4], 6.5, 30, 12), focus: "operatory" },
 ];
 
 const WAINSCOT = { h: 1.0, color: C.sage };

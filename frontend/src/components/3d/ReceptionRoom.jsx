@@ -6,16 +6,16 @@ import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import {
   C, tex, Mat, Box, Cyl, Plane, Rod, OnWall, RoomShell, Door, Window, PalmPlant, Pickable, TaskChair,
-  ContactShadow, view,
+  Quartz, ContactShadow, view,
 } from "./roomKit";
 
 /** One stop per content <section> on /reception, framed tight on its focal object (fov 24). */
 export const STOPS = [
-  { id: "welcome",      ...view([-0.8, 0.9, -0.3], 7.5, 42, 24) },
+  { id: "welcome",      ...view([-0.4, 0.9, -0.7], 8.2, 40, 24) },
   { id: "how-it-works", ...view([1.3, 0.6, -1.9], 4.6, 20, 18),  focus: "waiting" },
-  { id: "check-in",     ...view([-1.35, 0.85, 0.4], 4.2, 55, 24), focus: "desk" },
-  { id: "privacy",      ...view([-1.3, 1.0, 0.3], 3.4, 70, 20),  focus: "desk" },
-  { id: "doors",        ...view([-2.0, 1.2, -2.4], 4.0, 20, 12), focus: "hallway" },
+  { id: "check-in",     ...view([-1.7, 0.8, 0.2], 4.8, 50, 24), focus: "desk" },
+  { id: "privacy",      ...view([-1.8, 1.0, 0.3], 4.4, 85, 30),  focus: "desk" },
+  { id: "doors",        ...view([-2.0, 1.15, -2.4], 4.6, 15, 26), focus: "hallway" },
 ];
 
 /** Doors out of this room (id = the room it leads to). Also used for the camera fly-through. */
@@ -81,16 +81,15 @@ function DeskLamp() {
   );
 }
 
-/** Curved reception counter: speckled white shell, maroon/orange band, inner work surface. */
+/** Curved reception counter: speckled white quartz shell and top, maroon/orange band, inner work surface. */
 function ReceptionDesk() {
-  const speckle = tex.speckle();
-  const shell = <Mat c="#ffffff" map={speckle} r={0.55} />;
+  const quartz = <Quartz c="#f4f2ec" r={0.32} rx={3} ry={2} />;
   return (
     <group>
       <ContactShadow w={1.6} d={2.9} p={[0.7, 0, 0]} o={0.35} />
-      <ArcSlab r0={0.95} r1={1.25} a0={-95} a1={95} h={1.02}>{shell}</ArcSlab>
+      <ArcSlab r0={0.95} r1={1.25} a0={-95} a1={95} h={1.02}>{quartz}</ArcSlab>
       <ArcSlab r0={0.9} r1={1.31} a0={-96} a1={96} h={0.04} y={1.02} bevel={0.012}>
-        <Mat c="#fbfbf9" r={0.3} />
+        {quartz}
       </ArcSlab>
       <ArcSlab r0={1.24} r1={1.268} a0={-93} a1={93} h={0.075} y={0.8} bevel={0.004}>
         <Mat c={C.maroon} r={0.45} />
