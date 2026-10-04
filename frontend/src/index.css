@@ -1,55 +1,58 @@
 @import "tailwindcss";
 
 /*
- * Editorial theme: a warm off-white canvas, charcoal type, deep maroon for
- * actions and amber held back for alerts. Hairline rules instead of shadows.
+ * Warm, health-focused theme: cream canvas, charcoal type, teal for actions and
+ * mint/sage for highlights. Frosted white panels with a faint paper grain.
  * Every color the UI uses is a token here (Tailwind v4 reads them from @theme;
  * there is no tailwind.config.js).
  *
- * Contrast (WCAG 2.2 AA) on the canvas #FAF9F5 / on paper #F4F1EA:
- *   ink          16.0:1 / 15.0:1     ink-muted    6.1:1 / 5.7:1
- *   primary       8.9:1 /  8.3:1     amber-ink    5.9:1 / 5.5:1
- *   danger        6.2:1 /  5.8:1     success      6.1:1 / 5.7:1
- *   control       4.1:1 /  3.8:1 (input and control borders; WCAG 1.4.11 needs 3:1)
- *   white on primary 9.4:1
- * amber (#D96B27, 3.3:1) and the viz-* colors are for marks and large numerals
- * only, never small text. line and rule are decorative hairlines.
+ * Contrast (WCAG 2.2 AA) on the canvas #FAF9F5:
+ *   ink          14.4:1     ink-muted    5.9:1     primary (teal-700)  5.1:1
+ *   positive      5.2:1     amber-ink    5.9:1     danger              6.2:1
+ *   white on primary 5.4:1
+ * Teal-600 (#0D9488, 3.5:1) and emerald-600 (#059669) are used for marks, rings
+ * and large numerals only, never for small text or as a white-text fill.
+ * mint and sage are backgrounds: dark text on them, never white.
  */
 @theme {
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-serif: Georgia, Garamond, "Times New Roman", serif;
+  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: "Fraunces Variable", Georgia, "Times New Roman", serif;
   --font-mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, monospace;
 
   /* Text */
-  --color-ink: #1c1d1f;
-  --color-ink-muted: #5a6065;
-  --color-primary: #8a1538; /* maroon: CTAs, active and selected states, links, focus ring */
-  --color-primary-strong: #6e0f2c; /* hover / pressed */
+  --color-ink: #1f2937; /* rich charcoal */
+  --color-ink-muted: #596270; /* slate helper text (a shade darker than #6B7280 so it holds AA on tinted cards) */
+  --color-primary: #0f766e; /* teal-700: CTAs, links, active and selected states, focus ring */
+  --color-primary-strong: #115e59; /* teal-800: hover / pressed */
+  --color-accent: #0d9488; /* teal-600: marks, rings, large numerals */
+  --color-emerald: #059669; /* deep emerald: marks, positive figures (large) */
+  --color-mint: #6ee7b7; /* soft mint: badges and highlights (dark text on it) */
+  --color-sage: #a7f3d0; /* calming sage: chips and washes (dark text on it) */
 
-  /* Amber: alerts, remaining balances, pending actions */
-  --color-amber: #d96b27; /* marks and large numerals only */
-  --color-amber-ink: #9a4a12; /* amber text at body size */
+  /* Amber: alerts only (expiring benefits, over the maximum) */
+  --color-amber: #d97706; /* marks only */
+  --color-amber-ink: #92400e; /* amber text at body size */
 
   /* Status text: always paired with an icon and a label */
-  --color-success: #1e6b52;
-  --color-warning: #9a4a12;
+  --color-positive: #047857; /* money still available */
+  --color-success: #047857;
+  --color-warning: #92400e;
   --color-danger: #b42318;
 
   /* Surfaces and lines */
-  --color-surface: #faf9f5; /* canvas: panels, header, max bar */
-  --color-paper: #f4f1ea; /* page behind the sheet, table heads, dropzone */
-  --color-cream: #f4f1ea; /* hover wash (same as paper) */
-  --color-track: #e7e5e4; /* empty part of a meter */
-  --color-line: #e7e5e4; /* decorative hairlines (stone-200) */
-  --color-rule: #d6d3d1; /* dashed dropzone border (stone-300) */
-  --color-control: #767b80; /* input and control borders */
+  --color-surface: #faf9f5; /* warm cream canvas */
+  --color-paper: #f3f1ea; /* table heads, dropzone */
+  --color-cream: #f3f1ea; /* hover wash */
+  --color-track: #e3ebe7; /* empty part of a meter */
+  --color-line: #e4e7e5; /* decorative hairlines */
+  --color-rule: #cbd5d1; /* dashed dropzone border */
+  --color-control: #6b7a80; /* input and control borders (>= 3:1) */
 
-  /* Data marks, validated with the dataviz checker on the canvas (lightness
-     band, chroma floor, CVD and normal-vision separation, >= 3:1). */
-  --color-viz-plan: #2b65a0; /* insurance pays / maximum used */
-  --color-viz-you: #a8234a; /* you pay */
-  --color-viz-planned: #d96b27; /* pending / planned (also hatched) */
-  --color-viz-treated: #5a6065; /* treated this plan year (status mark, with text) */
+  /* Data marks (>= 3:1 on the canvas; "planned" is also hatched). */
+  --color-viz-plan: #0f766e; /* used / insurance pays */
+  --color-viz-planned: #2b65a0; /* pending / planned */
+  --color-viz-you: #7c5cbf; /* you pay */
+  --color-viz-treated: #596270; /* treated this plan year (status mark, with text) */
 }
 
 /* data-view is set on <html> by AppShell: the same pages, with or without the 3D layer. */
@@ -59,16 +62,13 @@
 @custom-variant short (@media (max-height: 30rem));
 
 :root {
-  /* Panels are 98% canvas: no blur needed, and every text token keeps its
-     contrast whatever the 3D scene behind is doing. */
-  --panel-bg: rgb(250 249 245 / 0.98);
-  --page-bg: var(--color-paper);
+  /* Frosted panels: 80% white over a blur. Text tokens keep their contrast over
+     any backdrop, since the blurred scene can only darken the white to ~#d9d9d9. */
+  --panel-bg: rgb(255 255 255 / 0.8);
+  --drawer-bg: rgb(250 249 245 / 0.98);
+  --page-bg: var(--color-surface);
   /* Width of the side drawer that holds the room's sections in the 3D view. */
   --drawer-w: clamp(30rem, 40vw, 40rem);
-}
-
-:root:not([data-view="immersive"]) {
-  --panel-bg: var(--color-surface);
 }
 
 @media (prefers-reduced-transparency: reduce) {
@@ -126,14 +126,19 @@
   }
 
   /*
-   * A section's frame. On a sheet (the Traditional view, and the side drawer in
-   * the 3D view from lg up) sections are plain bands divided by hairlines. On
-   * small screens in the 3D view each one is its own 98% block, with the scene
-   * showing in the gaps.
+   * A section's frame: a frosted card (Traditional view, and the 3D view on small
+   * screens). From lg up in the 3D view, sections are plain bands in the side
+   * drawer, divided by hairlines.
    */
   .panel {
-    border: 1px solid var(--color-line);
+    position: relative;
+    isolation: isolate;
+    border: 1px solid rgb(204 251 241 / 0.6); /* teal-100 at 60% */
+    border-radius: 1rem;
     background: var(--panel-bg);
+    box-shadow: 0 1px 2px rgb(15 118 110 / 0.08);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
     padding: 1.5rem;
   }
   @media (min-width: 40rem) {
@@ -141,23 +146,81 @@
       padding: 2rem;
     }
   }
-  :root:not([data-view="immersive"]) .panel {
-    border: 0;
-    background: none;
-    padding: 2.5rem 0;
-  }
-  :root:not([data-view="immersive"]) .room-stop + .room-stop {
-    border-top: 1px solid var(--color-line);
-  }
   @media (min-width: 64rem) {
     :root[data-view="immersive"] .panel {
       border: 0;
+      border-radius: 0;
       background: none;
+      box-shadow: none;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
       padding: 2.5rem 0;
+    }
+    :root[data-view="immersive"] .panel::before {
+      display: none;
     }
     :root[data-view="immersive"] .room-stop + .room-stop {
       border-top: 1px solid var(--color-line);
     }
+  }
+
+  /* Paper grain: a 3% SVG noise sheet under a card's content. */
+  .panel::before,
+  .grain::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0.03;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.4 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .grain {
+    position: relative;
+    isolation: isolate;
+  }
+}
+
+/*
+ * Parallax. z-20 background layers sit under the z-30 drawer, the z-40 forms and the
+ * z-50 header and max bar. Variables are written by Parallax.tsx: --mx/--my are the
+ * pointer (-1..1), --sy is scrollY.
+ */
+.parallax-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  overflow: hidden;
+  pointer-events: none;
+}
+.parallax-layer {
+  position: absolute;
+  inset: -3rem;
+  will-change: transform;
+  transform: translate3d(
+    calc(var(--mx, 0) * var(--depth, 0) * -1px),
+    calc(var(--my, 0) * var(--depth, 0) * -0.6px + var(--sy, 0) * var(--rate, 0) * -1px),
+    0
+  );
+}
+.parallax-scene {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  will-change: transform;
+  transform: translate3d(calc(var(--mx, 0) * var(--depth, 0) * -1px), calc(var(--my, 0) * var(--depth, 0) * -0.6px), 0) scale(1.04);
+}
+@media (prefers-reduced-motion: reduce) {
+  .parallax-layer,
+  .parallax-scene {
+    transform: none;
+    will-change: auto;
+  }
+  .parallax-scene {
+    transform: none;
   }
 }
 

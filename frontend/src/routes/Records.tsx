@@ -131,7 +131,7 @@ function RecordsContent() {
       </Panel>
 
       <Panel id="reminders" eyebrow="Year-end alerts" title="Reminders">
-        <ul className="border-t-2 border-ink">
+        <ul className="border-t-2 border-primary/70">
           {reminders.map((r) => (
             <li key={r.id} className="grid gap-x-4 border-b border-line py-3 sm:grid-cols-[8rem_minmax(0,1fr)]">
               <p className="font-mono text-sm tabular-nums text-ink-muted">{formatLongDate(r.date)}</p>

@@ -6,6 +6,7 @@ import { useLineItems } from '../../store/selectors'
 import { useSessionStore } from '../../store/sessionStore'
 import { announce } from '../../store/uiStore'
 import type { CostLineItem, NetworkTier } from '../../types/domain'
+import { CdtBadge, Chip, CoverageChip, NetworkChip } from '../Chip'
 import Panel from '../Panel'
 import SplitBar from '../SplitBar'
 import { buttonQuiet, ledger, table } from '../ui'
@@ -195,11 +196,14 @@ export default function CostBreakdown() {
                 return (
                   <tr key={item.request.id} className={table.row}>
                     <th scope="row" className={`${table.td} font-medium text-ink`}>
-                      {item.procedure.shortName}
-                      <span className="block font-mono text-xs font-normal text-ink-muted">
-                        {item.procedure.cdtCode}
-                        {item.request.toothNumber != null && <> · #{item.request.toothNumber}</>} ·{' '}
-                        {COVERAGE_LABEL[item.procedure.coverageClass]}
+                      <CdtBadge code={item.procedure.cdtCode} name={item.procedure.shortName} />
+                      <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <CoverageChip
+                          label={COVERAGE_LABEL[item.procedure.coverageClass]}
+                          pct={item.procedure.isCovered ? item.planPaysPct[network] : 0}
+                        />
+                        <NetworkChip network={network} />
+                        {item.request.toothNumber != null && <Chip>Tooth #{item.request.toothNumber}</Chip>}
                       </span>
                       {e.overMaximum > 0 && (
                         <span className="block text-xs font-medium text-amber-ink">{formatUsd(e.overMaximum)} over the maximum</span>

@@ -7,9 +7,9 @@
 
 import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import type { AiAnalysis } from '../types/domain'
+import type { AiAnalysis, ProcedureRequest } from '../types/domain'
 import { useAnnualMax } from './selectors'
-import { useSessionStore, type ManualPlanInput } from './sessionStore'
+import { useSessionStore, type DecodeChatMessage, type ManualPlanInput } from './sessionStore'
 
 export interface DentalState {
   /** This plan year's maximum (sample plan: $1,500). 0 until a plan is checked in. */
@@ -23,6 +23,10 @@ export interface DentalState {
   /** What the user typed in "Describe your care" (default: "Root canal on tooth #14"). */
   procedureInput: string
   aiAnalysis: AiAnalysis | null
+  /** The "Decode your plan" chatbot transcript. */
+  chatHistory: DecodeChatMessage[]
+  /** Care being priced this plan year. Append with addProcedure; the ledger and annual max follow. */
+  plannedProcedures: ProcedureRequest[]
   /**
    * 'sample' checks in Lincoln Preferred PPO, 'high-option' the High-Option
    * sample, an object checks in a typed-in plan, null clears it.
@@ -31,6 +35,8 @@ export interface DentalState {
   setProcedure: (text: string) => void
   setAiAnalysis: (analysis: AiAnalysis | null) => void
   updateBenefits: (patch: { annualMax?: number; used?: number }) => void
+  addChatMessage: (message: Omit<DecodeChatMessage, 'timestamp'> & { timestamp?: string }) => void
+  addProcedure: (procedure: ProcedureRequest) => void
 }
 
 export function useDentalStore(): DentalState
@@ -47,6 +53,10 @@ export function useDentalStore<T>(selector?: (state: DentalState) => T): T | Den
       setProcedureInput: s.setProcedureInput,
       setAiAnalysis: s.setAiAnalysis,
       updateBenefits: s.updateBenefits,
+      chatHistory: s.chatHistory,
+      plannedProcedures: s.procedures,
+      addChatMessage: s.addChatMessage,
+      addProcedure: s.addProcedure,
     })),
   )
   const max = useAnnualMax()
@@ -68,6 +78,10 @@ export function useDentalStore<T>(selector?: (state: DentalState) => T): T | Den
       setProcedure: s.setProcedureInput,
       setAiAnalysis: s.setAiAnalysis,
       updateBenefits: s.updateBenefits,
+      chatHistory: s.chatHistory,
+      plannedProcedures: s.plannedProcedures,
+      addChatMessage: (message) => s.addChatMessage({ ...message, timestamp: message.timestamp ?? new Date().toISOString() }),
+      addProcedure: s.addProcedure,
     }),
     [max, s],
   )

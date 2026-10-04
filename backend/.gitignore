@@ -1,0 +1,7 @@
+# Local secrets (DB URLs, AWS keys). Copy .env.example to .env.
+.env
+.env.*
+!.env.example
+
+# Maven build output
+target/

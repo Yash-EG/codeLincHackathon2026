@@ -35,7 +35,7 @@ export default function AnnualMaxProgress({ annualMax, summary }: AnnualMaxProgr
     <div>
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <p className="flex flex-wrap items-baseline gap-x-3">
-          <span className="font-mono text-5xl font-semibold tracking-tight tabular-nums text-amber-ink">{formatUsd(left)}</span>
+          <span className="font-serif text-5xl font-medium tracking-tight tabular-nums text-positive">{formatUsd(left)}</span>
           <span className="text-sm text-ink-muted">
             left of {formatUsd(max)} after planned care
             {summary.rolloverBalance > 0 && <> (incl. {formatUsd(summary.rolloverBalance)} rollover)</>}
@@ -76,7 +76,7 @@ export default function AnnualMaxProgress({ annualMax, summary }: AnnualMaxProgr
               {/* enlarged hit target + tooltip */}
               <span className="absolute inset-x-0 -inset-y-2" aria-hidden="true" />
               <span
-                className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-sm border border-ink/30 bg-surface px-2 py-1 font-mono text-xs text-ink opacity-0 transition-opacity group-hover:opacity-100"
+                className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-ink/30 bg-surface px-2 py-1 font-mono text-xs text-ink opacity-0 transition-opacity group-hover:opacity-100"
                 aria-hidden="true"
               >
                 {s.label}: {formatUsd(s.value)} ({Math.round(pct(s.value))}%)

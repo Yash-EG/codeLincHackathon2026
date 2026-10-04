@@ -11,7 +11,7 @@ export default function Hallway() {
     <>
       <RoomIntro room={room} />
       <Panel id="directory" title="Building directory">
-        <div className="border-t-2 border-ink">
+        <div className="border-t-2 border-primary/70">
           {DOORS.map((door) => (
             <DoorCard key={door.id} room={door} />
           ))}

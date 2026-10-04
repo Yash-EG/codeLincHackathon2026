@@ -59,7 +59,7 @@ export default function PdfDropzone({ onEnterManually }: { onEnterManually: () =
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
-        className={`rounded-sm border border-dashed px-6 py-10 text-center transition-colors ${
+        className={`rounded-lg border border-dashed px-6 py-10 text-center transition-colors ${
           dragging ? 'border-primary bg-primary/[0.04]' : 'border-rule bg-paper/50'
         }`}
       >
@@ -100,7 +100,7 @@ export default function PdfDropzone({ onEnterManually }: { onEnterManually: () =
       )}
 
       {file && (
-        <div className="border-t-2 border-ink">
+        <div className="border-t-2 border-primary/70">
           <div className="flex items-center gap-3 border-b border-line py-2">
             <FileText className="size-5 shrink-0 text-ink-muted" aria-hidden="true" />
             <p className="min-w-0 flex-1 truncate text-sm text-ink">

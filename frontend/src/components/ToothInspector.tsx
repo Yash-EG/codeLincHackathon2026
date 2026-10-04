@@ -29,7 +29,7 @@ const QUICK_ACTIONS: Array<{ label: string; prompt: (n: number) => string }> = [
 /** Details and one-click "what would it cost" questions for the selected tooth. */
 export default function ToothInspector({ tooth, status, history, disabled, onAsk, onClose }: ToothInspectorProps) {
   return (
-    <section aria-labelledby="tooth-inspector-title" className="border-t-2 border-ink pt-4">
+    <section aria-labelledby="tooth-inspector-title" className="border-t-2 border-primary/70 pt-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 id="tooth-inspector-title" className="font-serif text-2xl leading-tight text-ink">
@@ -72,7 +72,7 @@ export default function ToothInspector({ tooth, status, history, disabled, onAsk
               type="button"
               disabled={disabled}
               onClick={() => onAsk(action.prompt(tooth.number))}
-              className="min-h-11 rounded-sm border border-control bg-surface px-3.5 text-sm font-medium text-ink transition-colors hover:border-primary hover:text-primary disabled:cursor-wait disabled:opacity-60"
+              className="min-h-11 rounded-lg border border-control bg-surface px-3.5 text-sm font-medium text-ink transition-colors hover:border-primary hover:text-primary disabled:cursor-wait disabled:opacity-60"
             >
               {action.label}
               <span className="sr-only"> on tooth {tooth.number}</span>

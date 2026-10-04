@@ -1,3 +1,4 @@
+import { tileLift } from './ui'
 import { getTooth } from '../data/teeth'
 import type { ToothStatus } from '../types/domain'
 
@@ -63,7 +64,7 @@ export default function ToothChart({ selectedTooth, toothStatus, onSelect }: Too
                 >
                   {quadrant.label}
                 </p>
-                <div className="grid grid-cols-8 gap-px border border-line bg-line">
+                <div className="grid grid-cols-8 gap-1.5">
                   {quadrant.teeth.map((number) => {
                     const tooth = getTooth(number)
                     const status = toothStatus[number]
@@ -76,15 +77,15 @@ export default function ToothChart({ selectedTooth, toothStatus, onSelect }: Too
                         aria-label={`Tooth ${number}, ${tooth?.name.toLowerCase() ?? ''}${status ? `, ${STATUS_TEXT[status]}` : ''}`}
                         title={tooth?.name}
                         onClick={() => onSelect(selected ? null : number)}
-                        className={`relative flex min-h-12 flex-col items-center justify-center gap-1 font-mono text-sm tabular-nums transition-colors ${
+                        className={`relative flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg border font-mono text-sm tabular-nums ${tileLift} ${
                           selected
-                            ? 'bg-primary text-white'
-                            : 'bg-surface text-ink hover:text-primary hover:shadow-[inset_0_0_0_1px_var(--color-primary)]'
+                            ? 'border-primary bg-primary text-white shadow-md'
+                            : 'border-line bg-white/80 text-ink hover:border-primary hover:text-primary'
                         }`}
                       >
                         {number}
                         <span aria-hidden="true" className="flex h-1.5 items-center">
-                          {status === 'planned' && <span className={`h-0.5 w-3.5 ${selected ? 'bg-white' : 'bg-amber'}`} />}
+                          {status === 'planned' && <span className={`h-0.5 w-3.5 ${selected ? 'bg-white' : 'bg-viz-planned'}`} />}
                           {status === 'treated' && (
                             <span className={`size-1.5 rounded-full ${selected ? 'bg-white' : 'bg-viz-treated'}`} />
                           )}
@@ -100,7 +101,7 @@ export default function ToothChart({ selectedTooth, toothStatus, onSelect }: Too
       ))}
       <ul className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-ink-muted" aria-label="Key">
         <li className="flex items-center gap-2">
-          <span className="h-0.5 w-3.5 bg-amber" aria-hidden="true" /> Care planned
+          <span className="h-0.5 w-3.5 bg-viz-planned" aria-hidden="true" /> Care planned
         </li>
         <li className="flex items-center gap-2">
           <span className="size-1.5 rounded-full bg-viz-treated" aria-hidden="true" /> Treated this plan year

@@ -135,7 +135,7 @@ export default function ExploreProcedureForm({ onContinue }: { onContinue?: (ans
     return (
       <div className="space-y-4">
         <p className="text-ink-muted">Here&rsquo;s what you told us. Nothing is submitted anywhere yet.</p>
-        <dl className="grid gap-px border-t-2 border-ink bg-line sm:grid-cols-2">
+        <dl className="grid gap-px border-t-2 border-primary/70 bg-line sm:grid-cols-2">
           <SummaryRow label="Who it's for" value={labelFor('patient', submitted.selections.patient)} />
           <SummaryRow label="Procedure" value={labelFor('procedure', submitted.selections.procedure)} />
           <SummaryRow label="Timing" value={labelFor('timing', submitted.selections.timing)} />
@@ -246,7 +246,7 @@ function ChoiceGroup({
                 className="peer sr-only"
               />
               <span
-                className={`flex min-h-11 cursor-pointer items-center justify-center rounded-sm border px-3 py-2.5 text-center text-sm font-medium transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary ${
+                className={`flex min-h-11 cursor-pointer items-center justify-center rounded-lg border px-3 py-2.5 text-center text-sm font-medium transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary ${
                   selected
                     ? 'border-primary bg-primary/[0.05] font-semibold text-primary'
                     : 'border-control bg-surface text-ink hover:border-ink'

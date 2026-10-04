@@ -30,7 +30,7 @@ export default function SegmentedControl<T extends string>({
       <legend className={hideLegend ? 'sr-only' : 'mb-2 font-mono text-[11px] font-medium uppercase tracking-widest text-ink'}>
         {legend}
       </legend>
-      <div className="inline-flex flex-wrap rounded-sm border border-control bg-surface">
+      <div className="inline-flex flex-wrap rounded-lg border border-control bg-surface">
         {options.map((opt) => (
           <label key={opt.value} className="relative border-control not-first:border-l">
             <input

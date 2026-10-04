@@ -5,7 +5,7 @@
  * flies the camera out through a door: the door swings open, the camera passes through the
  * opening, and it comes in through the matching door of the next room, which closes behind it.
  *
- * This grew out of the single-room DentalOffice prototype (see git history). Its eight STATIONS now
+ * This grew out of the single-room DentalOffice prototype (see git history). Its STATIONS now
  * live in the kit rooms, and its standalone header, side panel, markers, max bar and 2D mode are
  * replaced by the site's own header, room pages, max bar and traditional view. The stations' panels
  * (PlanInput, TreatmentMap, CostBreakdown, Timeline) are sections of the matching room pages.
@@ -51,16 +51,13 @@ export const ROOMS = {
   providers: { Room: ProvidersRoom, stops: PROVIDERS_STOPS, doors: PROVIDERS_DOORS },
 };
 
-/** The prototype's eight stations, now a room + page section + focal object each. */
+/** The five stations, in the order a member moves through them: a room + page section + focal object each. */
 export const STATIONS = [
-  { id: "reception", room: "reception", section: "check-in",   focus: "desk",     label: "Check-in",   tag: "Req 1",   feature: "Plan details" },
-  { id: "chair",     room: "operatory", section: "describe",   focus: "chair",    label: "Procedure",  tag: "Req 1",   feature: "Describe your care" },
-  { id: "xray",      room: "imaging",   section: "coverage",   focus: "xray",     label: "Coverage",   tag: "Req 2",   feature: "Plain-English translation" },
-  { id: "checkout",  room: "billing",   section: "line-items", focus: "terminal", label: "Your Cost",  tag: "Req 2",   feature: "Cost breakdown" },
-  { id: "calendar",  room: "consult",   section: "this-year",  focus: "calendar", label: "Plan Year",  tag: "Req 3",   feature: "Sequence your care" },
-  { id: "jar",       room: "records",   section: "annual-max", focus: "jar",      label: "Annual Max", tag: "Bonus 1", feature: "Usage tracker" },
-  { id: "doors",     room: "billing",   section: "network",    focus: "network",  label: "Network",    tag: "Bonus 2", feature: "In- vs out-of-network" },
-  { id: "board",     room: "records",   section: "reminders",  focus: "board",    label: "Reminders",  tag: "Bonus 3", feature: "Year-end alerts" },
+  { id: "chatbot",  room: "imaging",   section: "ask",        focus: "monitor",  label: "Decode Plan",        tag: "Req 2", feature: "Plain-English coverage chat" },
+  { id: "chair",    room: "operatory", section: "describe",   focus: "chair",    label: "Add Planned Care",   tag: "Req 1", feature: "Procedure entry + tooth picker" },
+  { id: "checkout", room: "billing",   section: "line-items", focus: "terminal", label: "Your Cost",          tag: "Req 2", feature: "In- vs out-of-network ledger" },
+  { id: "calendar", room: "consult",   section: "this-year",  focus: "calendar", label: "Plan Year Strategy", tag: "Req 3", feature: "Care sequencing + year-end alerts" },
+  { id: "jar",      room: "records",   section: "annual-max", focus: "jar",      label: "Annual Max Tracker", tag: "Bonus 1", feature: "Usage metrics" },
 ];
 
 /** The camera stop for each section id on a room's page; unknown ids reuse the previous stop. */

@@ -82,7 +82,7 @@ export default function Timeline() {
           )
         )}
         <p className="text-ink-muted">Use what is left of your {annualMax.year} maximum before it expires.</p>
-        <ol className="border-t-2 border-ink">
+        <ol className="border-t-2 border-primary/70">
           {thisYear.map((item, i) => (
             <StepRow
               key={item.request.id}
@@ -107,7 +107,7 @@ export default function Timeline() {
             <p className="text-ink-muted">
               On Jan 1 the maximum starts over at {formatUsd(benefits.annualMaximum)} and the deductible resets.
             </p>
-            <ol className="border-t-2 border-ink">
+            <ol className="border-t-2 border-primary/70">
               {later.map((item, i) => {
                 const name = `${item.procedure.shortName}${item.request.toothNumber != null ? ` on tooth ${item.request.toothNumber}` : ''}`
                 return (
@@ -211,7 +211,7 @@ function Figure({ label, value, amber }: { label: string; value: string; amber?:
   return (
     <div className="border-t border-line pt-2">
       <dt className={eyebrow}>{label}</dt>
-      <dd className={`mt-1 font-mono text-xl tabular-nums sm:text-2xl ${amber ? 'font-semibold text-amber-ink' : 'text-ink'}`}>
+      <dd className={`mt-1 font-serif text-2xl tabular-nums sm:text-3xl ${amber ? 'font-semibold text-amber-ink' : 'text-ink'}`}>
         {value}
       </dd>
     </div>

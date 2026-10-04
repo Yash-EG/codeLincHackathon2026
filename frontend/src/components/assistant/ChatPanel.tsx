@@ -162,12 +162,12 @@ export default function ChatPanel({
                 : 'e.g. “Root canal on tooth #14”'
             }
             autoComplete="off"
-            className="min-h-11 min-w-0 flex-1 rounded-sm border border-control bg-surface px-3 text-sm text-ink placeholder:text-ink-muted"
+            className="min-h-11 min-w-0 flex-1 rounded-lg border border-control bg-surface px-3 text-sm text-ink placeholder:text-ink-muted"
           />
           <button
             type="submit"
             disabled={isThinking}
-            className="grid size-11 shrink-0 place-items-center rounded-sm bg-primary text-white transition-colors hover:bg-primary-strong disabled:cursor-wait disabled:opacity-60"
+            className="grid size-11 shrink-0 place-items-center rounded-lg bg-primary text-white transition-colors hover:bg-primary-strong disabled:cursor-wait disabled:opacity-60"
             aria-label="Send"
           >
             <SendHorizontal className="size-4" aria-hidden="true" />

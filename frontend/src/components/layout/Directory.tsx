@@ -47,7 +47,7 @@ export default function Directory() {
         aria-expanded={open}
         aria-controls={listId}
         onClick={() => setOpen((o) => !o)}
-        className="inline-flex min-h-11 items-center gap-2 rounded-sm border border-control bg-surface px-3.5 text-sm font-semibold text-ink transition-colors hover:border-ink"
+        className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-control bg-surface px-3.5 text-sm font-semibold text-ink transition-colors hover:border-ink"
       >
         <Signpost className="size-4" aria-hidden="true" />
         Directory
@@ -57,7 +57,7 @@ export default function Directory() {
       <div
         id={listId}
         hidden={!open}
-        className="absolute left-0 top-full z-40 mt-2 w-[min(24rem,calc(100vw-2rem))] rounded-sm border border-ink/30 bg-surface"
+        className="absolute left-0 top-full z-40 mt-2 w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-ink/30 bg-surface"
       >
         <p className="border-b-2 border-ink px-4 py-2.5 font-mono text-[11px] font-medium uppercase tracking-widest text-ink-muted">
           Building directory

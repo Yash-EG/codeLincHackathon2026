@@ -1,5 +1,6 @@
 import { useShallow } from 'zustand/react/shallow'
-import EducationChat from '../components/EducationChat'
+import { CdtBadge, WaitingChip } from '../components/Chip'
+import DecodeChatbot from '../components/DecodeChatbot'
 import Panel from '../components/Panel'
 import RoomGate from '../components/RoomGate'
 import RoomIntro from '../components/RoomIntro'
@@ -26,8 +27,8 @@ export default function Imaging() {
   return (
     <>
       <RoomIntro room={room} />
-      <Panel id="ask" eyebrow="Glossary" title="Ask about your benefits">
-        <EducationChat />
+      <Panel id="ask" eyebrow="Ask anything" title="Decode your plan">
+        <DecodeChatbot />
       </Panel>
       <RoomGate prerequisite="plan">
         <Coverage />
@@ -84,7 +85,7 @@ function Coverage() {
                     <td className={table.num}>{tier.planPaysPctOutNetwork}%</td>
                     <td className={table.td}>{tier.deductibleApplies ? 'Yes' : 'No'}</td>
                     <td className={table.td}>
-                      {tier.waitingPeriodMonths > 0 ? `${tier.waitingPeriodMonths} months` : 'None'}
+                      <WaitingChip months={tier.waitingPeriodMonths} />
                     </td>
                   </tr>
                 )
@@ -119,7 +120,7 @@ function Coverage() {
                 return (
                   <tr key={p.cdtCode} className={table.row}>
                     <th scope="row" className={`${table.td} font-semibold text-ink`}>
-                      {p.shortName}
+                      <CdtBadge code={p.cdtCode} name={p.shortName} />
                     </th>
                     <td className={table.num}>{limit}</td>
                     <td className={table.num}>
@@ -141,7 +142,7 @@ function Coverage() {
             works.
           </p>
         ) : (
-          <dl className="border-t-2 border-ink">
+          <dl className="border-t-2 border-primary/70">
             {translations.map((t) => (
               <div key={t.id} className="border-b border-line py-5">
                 <dt className="font-mono text-[11px] font-medium uppercase tracking-widest text-ink-muted">{t.topic}</dt>

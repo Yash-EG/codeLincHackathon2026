@@ -23,7 +23,7 @@ export default function RoomIntro({ room, id = 'intro', title, children }: RoomI
         <h1
           id={`${id}-title`}
           tabIndex={-1}
-          className="font-serif text-4xl font-normal leading-[1.05] tracking-tight text-ink sm:text-5xl"
+          className="font-serif text-4xl font-medium leading-[1.05] tracking-tight text-ink sm:text-5xl"
         >
           {title ?? room.name}
         </h1>

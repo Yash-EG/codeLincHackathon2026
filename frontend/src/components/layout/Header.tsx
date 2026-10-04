@@ -24,9 +24,9 @@ export default function Header() {
   const plan = useSessionStore((s) => s.plan)
 
   return (
-    <header ref={ref} className="sticky top-0 z-30 border-b border-ink/15 bg-surface short:static">
+    <header ref={ref} className="sticky top-0 z-50 border-b border-ink/15 bg-surface short:static">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6 lg:px-12">
-        <Link to="/" className="flex items-center gap-2.5 rounded-sm no-underline">
+        <Link to="/" className="flex items-center gap-2.5 rounded-lg no-underline">
           <ToothMark className="size-6 text-primary" />
           <span className="leading-none">
             <span className="block font-serif text-xl tracking-tight text-ink">Molarity</span>

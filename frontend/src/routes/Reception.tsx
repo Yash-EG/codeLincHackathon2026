@@ -8,7 +8,7 @@ import { buttonPrimary, buttonSecondary, textLink } from '../components/ui'
 import { ROOMS_BY_ID } from '../rooms'
 
 const room = ROOMS_BY_ID.reception
-const DOORS = [ROOMS_BY_ID.operatory, ROOMS_BY_ID.imaging, ROOMS_BY_ID.billing, ROOMS_BY_ID.consult, ROOMS_BY_ID.records]
+const DOORS = [ROOMS_BY_ID.imaging, ROOMS_BY_ID.operatory, ROOMS_BY_ID.billing, ROOMS_BY_ID.consult, ROOMS_BY_ID.records]
 
 export default function Reception() {
   return (
@@ -16,22 +16,30 @@ export default function Reception() {
       <RoomIntro room={room} id="welcome" title="Welcome in">
         <p className="font-serif text-xl italic text-ink">Know what you&rsquo;ll owe before you sit in the chair.</p>
         <div className="mt-4 flex flex-wrap gap-3">
-          <Link to="#check-in" className={buttonPrimary}>
-            Check in your plan <ArrowRight className="size-4" aria-hidden="true" />
+          <Link to="/imaging#ask" className={buttonPrimary}>
+            Decode my plan <ArrowRight className="size-4" aria-hidden="true" />
           </Link>
-          <Link to="#how-it-works" className={buttonSecondary}>
-            How it works
+          <Link to="#check-in" className={buttonSecondary}>
+            See my plan
           </Link>
         </div>
       </RoomIntro>
 
       <Panel id="how-it-works" title="How it works">
-        <ol className="list-decimal space-y-3 border-t-2 border-ink pt-4 pl-6 marker:font-mono marker:text-sm marker:text-ink-muted">
+        <ol className="list-decimal space-y-3 border-t-2 border-primary/70 pt-4 pl-6 marker:font-mono marker:text-sm marker:text-ink-muted">
           <li>
-            <strong>Check in your plan.</strong> Your annual maximum, deductible and what each kind of care is covered at.
+            <strong>Start with your plan.</strong> A sample plan is already loaded. Adjust the numbers here whenever they
+            change.
           </li>
           <li>
-            <strong>Describe your care.</strong> In your own words, or by picking a tooth in the{' '}
+            <strong>Decode your coverage.</strong> Ask the assistant in the{' '}
+            <Link to="/imaging#ask" className={textLink}>
+              Imaging room
+            </Link>{' '}
+            what your plan means in plain English.
+          </li>
+          <li>
+            <strong>Add planned care.</strong> Describe each procedure, or pick a tooth, in the{' '}
             <Link to="/operatory" className={textLink}>
               Operatory
             </Link>
@@ -62,7 +70,7 @@ export default function Reception() {
       </Panel>
 
       <Panel id="doors" title="Where to next">
-        <div className="border-t-2 border-ink">
+        <div className="border-t-2 border-primary/70">
           {DOORS.map((door) => (
             <DoorCard key={door.id} room={door} />
           ))}

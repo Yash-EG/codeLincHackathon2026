@@ -22,7 +22,7 @@ export default function MaxBar() {
     <aside
       ref={ref}
       aria-label="Annual maximum"
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-ink/15 bg-surface short:static"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-ink/15 bg-surface short:static"
     >
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2.5 sm:px-6 lg:px-12">
         {annualMax ? (
@@ -67,7 +67,7 @@ export default function MaxBar() {
                   <span className="size-2 bg-track ring-1 ring-inset ring-control" aria-hidden="true" />
                   Left
                 </dt>
-                <dd className="font-mono font-semibold tabular-nums text-amber-ink">{formatUsd(annualMax.left)}</dd>
+                <dd className="font-mono font-semibold tabular-nums text-positive">{formatUsd(annualMax.left)}</dd>
               </div>
               {annualMax.overMaximum > 0 && (
                 <div className="flex items-center gap-1 font-semibold text-danger">

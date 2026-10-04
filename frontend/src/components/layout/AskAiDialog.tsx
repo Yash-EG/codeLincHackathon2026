@@ -72,7 +72,7 @@ export default function AskAiDialog() {
       ref={dialogRef}
       aria-labelledby="ask-ai-title"
       aria-describedby="ask-ai-description"
-      className="m-auto h-[min(44rem,calc(100dvh-2rem))] w-[min(36rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-sm border border-ink/30 bg-surface p-0 text-ink open:flex backdrop:bg-ink/45"
+      className="m-auto h-[min(44rem,calc(100dvh-2rem))] w-[min(36rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-lg border border-ink/30 bg-surface p-0 text-ink open:flex backdrop:bg-ink/45"
     >
       <div className="flex items-start justify-between gap-3 border-b-2 border-ink px-5 py-4">
         <div>
@@ -88,7 +88,7 @@ export default function AskAiDialog() {
           type="button"
           onClick={() => dialogRef.current?.close()}
           aria-label="Close Ask AI"
-          className="grid size-11 shrink-0 place-items-center rounded-sm text-ink-muted transition-colors hover:bg-paper hover:text-ink"
+          className="grid size-11 shrink-0 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-paper hover:text-ink"
         >
           <X className="size-5" aria-hidden="true" />
         </button>

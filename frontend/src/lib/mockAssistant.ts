@@ -130,6 +130,22 @@ function resolveTooth(text: string, selectedTooth: number | null): ToothInfo | u
   return findTooth(arch, side, index)
 }
 
+/**
+ * Reads free text as care: which procedure, which tooth, and the CDT codes that
+ * implies. `codes` is null when the care is per-tooth and no tooth was named or
+ * selected. Returns null when nothing in the text looks like a procedure.
+ */
+export function interpretCare(
+  message: string,
+  selectedTooth: number | null,
+): { label: string; tooth: ToothInfo | undefined; codes: string[] | null } | null {
+  const text = message.toLowerCase()
+  const intent = INTENTS.find((i) => i.pattern.test(text))
+  if (!intent) return null
+  const tooth = resolveTooth(text, selectedTooth)
+  return { label: intent.label, tooth, codes: intent.codes(tooth, text) }
+}
+
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 const patientPays = (items: CostLineItem[], network: 'IN_NETWORK' | 'OUT_OF_NETWORK' = 'IN_NETWORK') =>

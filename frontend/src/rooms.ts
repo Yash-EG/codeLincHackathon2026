@@ -32,9 +32,9 @@ export const ROOMS: Room[] = [
     id: 'reception',
     path: '/reception',
     name: 'Reception',
-    purpose: 'Check in your dental plan.',
+    purpose: 'Review your dental plan.',
     description:
-      'A bright waiting room with a curved front desk. Check in your plan here: use the sample plan or type in the numbers from your benefits summary.',
+      'A bright waiting room with a curved front desk. Your plan is already loaded: adjust the numbers or switch plans here.',
     requirement: 'Plan details',
   },
   {
@@ -45,23 +45,23 @@ export const ROOMS: Room[] = [
     description: 'A hallway of doors with a directory sign. Every room in the office is listed here.',
   },
   {
-    id: 'operatory',
-    path: '/operatory',
-    name: 'Operatory',
-    purpose: 'Describe your care.',
-    description:
-      'The treatment room with the dental chair. Describe what your dentist recommended, or pick a tooth on the map.',
-    requirement: 'Procedure',
-    prerequisite: 'plan',
-  },
-  {
     id: 'imaging',
     path: '/imaging',
     name: 'Imaging',
-    purpose: 'Read your coverage in plain English.',
+    purpose: 'Decode your plan with the assistant.',
     description:
-      'The X-ray room, where the fine print gets a closer look: what each kind of care is covered at, waiting periods and frequency limits.',
-    requirement: 'Coverage translation',
+      'The X-ray room, where the fine print gets a closer look. Ask the assistant about your coverage in plain English, or read what each kind of care is covered at, waiting periods and frequency limits.',
+    requirement: 'Decode plan',
+    prerequisite: 'plan',
+  },
+  {
+    id: 'operatory',
+    path: '/operatory',
+    name: 'Operatory',
+    purpose: 'Add planned care.',
+    description:
+      'The treatment room with the dental chair. Once you know your coverage, describe what your dentist recommended or pick a tooth on the map, and add as much planned care as you need.',
+    requirement: 'Planned care',
     prerequisite: 'plan',
   },
   {

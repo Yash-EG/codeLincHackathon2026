@@ -99,7 +99,7 @@ export default function CheckInForm({ onSubmit }: { onSubmit: (input: ManualPlan
         </p>
       )}
       {/* An intake sheet: one ruled row per field, label and hint on the left, the answer on the right. */}
-      <div className="border-t-2 border-ink">
+      <div className="border-t-2 border-primary/70">
         {FIELDS.map((field) => {
           const id = `plan-${field.name}`
           const error = errors[field.name]

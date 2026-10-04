@@ -35,6 +35,18 @@ export interface ManualPlanInput {
   majorPct: number
 }
 
+/** One turn of the "Decode your plan" chatbot. */
+export interface DecodeChatMessage {
+  sender: 'user' | 'assistant'
+  text: string
+  /** ISO 8601. */
+  timestamp: string
+  /** Where an assistant answer came from: your plan's numbers, the backend, or the offline glossary. */
+  source?: 'plan' | 'backend' | 'offline'
+  /** 'context': the co-pilot reacting to a form (a tooth picked, a plan switched), not to a question. */
+  kind?: 'context'
+}
+
 export interface SessionData {
   plan: InsurancePlan | null
   tiers: Record<CoverageClass, CoverageTier> | null
@@ -54,6 +66,8 @@ export interface SessionData {
   /** The assistant's read of the last procedure it priced. */
   aiAnalysis: AiAnalysis | null
   messages: ChatMessage[]
+  /** The "Decode your plan" chatbot transcript. */
+  chatHistory: DecodeChatMessage[]
 }
 
 interface SessionActions {
@@ -61,6 +75,8 @@ interface SessionActions {
   loadSamplePlan: (id?: SamplePlanId) => void
   setManualPlan: (input: ManualPlanInput) => void
   addProcedures: (requests: ProcedureRequest[]) => void
+  /** Appends one planned procedure; care can be added one at a time after the plan is set. */
+  addProcedure: (request: ProcedureRequest) => void
   removeProcedure: (requestId: string) => void
   /** Adds care to the next plan year. */
   deferToNextYear: (items: TreatmentPlanItem[]) => void
@@ -72,6 +88,8 @@ interface SessionActions {
   setNetwork: (network: NetworkTier) => void
   selectTooth: (toothNumber: number | null) => void
   appendMessage: (message: ChatMessage) => void
+  addChatMessage: (message: DecodeChatMessage) => void
+  /** Back to the default plan, with nothing planned. */
   reset: () => void
 }
 
@@ -91,6 +109,7 @@ const EMPTY: SessionData = {
   procedureInput: SAMPLE_PROCEDURE_INPUT,
   aiAnalysis: null,
   messages: [],
+  chatHistory: [],
 }
 
 function greetingFor(benefits: BenefitSummary): ChatMessage {
@@ -106,24 +125,29 @@ function greetingFor(benefits: BenefitSummary): ChatMessage {
   }
 }
 
+function sampleSession(id: SamplePlanId): SessionData {
+  const sample = SAMPLE_PLANS[id]
+  return {
+    ...EMPTY,
+    plan: sample.plan,
+    tiers: sample.tiers,
+    benefits: sample.benefits,
+    claims: CLAIMS,
+    translations: sample.translations,
+    providers: PROVIDERS,
+    messages: [greetingFor(sample.benefits)],
+  }
+}
+
+/** Everyone starts with a plan already loaded, so there's no setup step before the rest of the site. */
+const DEFAULT_SESSION = sampleSession('preferred')
+
 export const useSessionStore = create<SessionState>()(
   persist(
     (set) => ({
-      ...EMPTY,
+      ...DEFAULT_SESSION,
 
-      loadSamplePlan: (id = 'preferred') => {
-        const sample = SAMPLE_PLANS[id]
-        set({
-          ...EMPTY,
-          plan: sample.plan,
-          tiers: sample.tiers,
-          benefits: sample.benefits,
-          claims: CLAIMS,
-          translations: sample.translations,
-          providers: PROVIDERS,
-          messages: [greetingFor(sample.benefits)],
-        })
-      },
+      loadSamplePlan: (id = 'preferred') => set(sampleSession(id)),
 
       setManualPlan: (input) => {
         // A plan year ends on planYearEnd and starts the day after the same date a year earlier.
@@ -187,6 +211,7 @@ export const useSessionStore = create<SessionState>()(
       },
 
       addProcedures: (requests) => set((s) => ({ procedures: [...s.procedures, ...requests] })),
+      addProcedure: (request) => set((s) => ({ procedures: [...s.procedures, request] })),
       removeProcedure: (requestId) => set((s) => ({ procedures: s.procedures.filter((r) => r.id !== requestId) })),
       deferToNextYear: (items) => set((s) => ({ treatmentPlan: [...s.treatmentPlan, ...items] })),
       removePlanItem: (itemId) => set((s) => ({ treatmentPlan: s.treatmentPlan.filter((t) => t.id !== itemId) })),
@@ -214,13 +239,14 @@ export const useSessionStore = create<SessionState>()(
       setNetwork: (network) => set({ network }),
       selectTooth: (selectedTooth) => set({ selectedTooth }),
       appendMessage: (message) => set((s) => ({ messages: [...s.messages, message] })),
-      reset: () => set(EMPTY),
+      addChatMessage: (message) => set((s) => ({ chatHistory: [...s.chatHistory, message] })),
+      reset: () => set(DEFAULT_SESSION),
     }),
     {
       name: 'molarity-session',
-      // v3: adds the provider directory. Older sessions start over.
-      version: 3,
-      migrate: () => EMPTY as SessionState,
+      // v4: a default plan is loaded up front and the decode chatbot keeps a transcript. Older sessions start over.
+      version: 4,
+      migrate: () => DEFAULT_SESSION as SessionState,
       storage: createJSONStorage(() => sessionStorage),
     },
   ),

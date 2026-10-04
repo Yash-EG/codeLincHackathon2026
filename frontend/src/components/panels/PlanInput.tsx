@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowRight, CircleCheck } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { Link } from 'react-router'
 import { useShallow } from 'zustand/react/shallow'
 import { SAMPLE_PLANS, type SamplePlanId } from '../../data/mockData'
@@ -7,9 +7,10 @@ import { formatLongDate, formatUsd } from '../../lib/format'
 import { useSessionStore } from '../../store/sessionStore'
 import { announce } from '../../store/uiStore'
 import CheckInForm from '../CheckInForm'
+import CopilotNote from '../CopilotNote'
 import Panel from '../Panel'
 import PdfDropzone from '../PdfDropzone'
-import { buttonPrimary, buttonSecondary, ledger } from '../ui'
+import { buttonPrimary, buttonSecondary, fieldInput, ledger } from '../ui'
 
 type Method = SamplePlanId | 'manual' | 'upload'
 
@@ -33,22 +34,24 @@ const METHODS: Array<{ value: Method; name: string; blurb: string; meta: string 
 const isSample = (method: Method): method is SamplePlanId => method === 'preferred' || method === 'high-option'
 
 /**
- * Reception's check-in (the front desk in 3D), laid out like an intake sheet:
- * pick how to check in (a sample plan, your own numbers or a PDF), then fill in
- * that part. Once checked in it becomes a ruled summary of the plan. Focus
- * follows every swap so keyboard and screen-reader users never lose their place.
+ * Reception's plan details (the front desk in 3D). A plan is already loaded, so
+ * this is a ruled summary you can correct in place: update the annual maximum
+ * or what's been used, or switch to another sample plan, your own numbers or a
+ * PDF. There is no setup step to get through first. Focus follows every swap so
+ * keyboard and screen-reader users never lose their place.
  */
 export default function PlanInput() {
-  const { plan, benefits, loadSamplePlan, setManualPlan, reset } = useSessionStore(
+  const { plan, benefits, loadSamplePlan, setManualPlan, updateBenefits } = useSessionStore(
     useShallow((s) => ({
       plan: s.plan,
       benefits: s.benefits,
       loadSamplePlan: s.loadSamplePlan,
       setManualPlan: s.setManualPlan,
-      reset: s.reset,
+      updateBenefits: s.updateBenefits,
     })),
   )
   const [method, setMethod] = useState<Method>('preferred')
+  const [changing, setChanging] = useState(false)
   const [focusAfter, setFocusAfter] = useState<'summary' | 'options' | 'manual' | null>(null)
   const summaryRef = useRef<HTMLParagraphElement>(null)
   const optionsRef = useRef<HTMLFieldSetElement>(null)
@@ -66,15 +69,11 @@ export default function PlanInput() {
     setFocusAfter(null)
   }, [focusAfter, plan, method])
 
-  if (plan && benefits) {
+  if (plan && benefits && !changing) {
     const left = Math.max(benefits.remainingMaximum, 0)
     return (
-      <Panel id="check-in" eyebrow="Intake" title="Check in your plan">
-        <p ref={summaryRef} tabIndex={-1} className="flex items-center gap-2 text-sm font-semibold text-success">
-          <CircleCheck className="size-4" aria-hidden="true" />
-          Checked in
-        </p>
-        <p className="font-serif text-2xl leading-tight text-ink">
+      <Panel id="check-in" eyebrow="Plan details" title="Your plan">
+        <p ref={summaryRef} tabIndex={-1} className="font-serif text-2xl leading-tight text-ink">
           {plan.planName}
           <span className="block font-sans text-sm text-ink-muted">{plan.carrierName}</span>
         </p>
@@ -94,20 +93,29 @@ export default function PlanInput() {
           <SummaryRow label="Plan year ends" value={formatLongDate(benefits.planYearEnd)} />
           <SummaryRow label="Days left" value={String(benefits.daysRemaining)} />
         </dl>
+        <CopilotNote />
+        <AdjustNumbers
+          key={`${benefits.annualMaximum}-${benefits.usedToDate}`}
+          annualMaximum={benefits.annualMaximum}
+          usedToDate={benefits.usedToDate}
+          onSave={(patch) => {
+            updateBenefits(patch)
+            announce('Plan numbers updated.')
+          }}
+        />
         <div className="flex flex-wrap gap-3">
-          <Link to="/operatory" className={buttonPrimary}>
-            Next: describe your care <ArrowRight className="size-4" aria-hidden="true" />
+          <Link to="/imaging#ask" className={buttonPrimary}>
+            Next: decode your plan <ArrowRight className="size-4" aria-hidden="true" />
           </Link>
           <button
             type="button"
             className={buttonSecondary}
             onClick={() => {
-              reset()
+              setChanging(true)
               setFocusAfter('options')
-              announce('Plan cleared. Choose how to check in.')
             }}
           >
-            Check in a different plan
+            Use a different plan
           </button>
         </div>
       </Panel>
@@ -117,12 +125,12 @@ export default function PlanInput() {
   const sample = isSample(method) ? SAMPLE_PLANS[method] : null
 
   return (
-    <Panel id="check-in" eyebrow="Intake" title="Check in your plan">
+    <Panel id="check-in" eyebrow="Plan details" title="Choose a plan">
       <fieldset ref={optionsRef}>
         <legend className="mb-3 font-mono text-[11px] font-medium uppercase tracking-widest text-ink">
-          How would you like to check in?
+          Which plan should we use?
         </legend>
-        <div className="border-t-2 border-ink">
+        <div className="border-t-2 border-primary/70">
           {METHODS.map((option) => (
             <label
               key={option.value}
@@ -163,11 +171,12 @@ export default function PlanInput() {
             className={buttonPrimary}
             onClick={() => {
               loadSamplePlan(sample.id)
+              setChanging(false)
               setFocusAfter('summary')
-              announce(`Sample plan checked in: ${sample.plan.planName}.`)
+              announce(`Now using ${sample.plan.planName}.`)
             }}
           >
-            Check in {sample.plan.planName}
+            Use {sample.plan.planName}
           </button>
         </div>
       )}
@@ -176,8 +185,9 @@ export default function PlanInput() {
         <CheckInForm
           onSubmit={(input) => {
             setManualPlan(input)
+            setChanging(false)
             setFocusAfter('summary')
-            announce(`Plan checked in: ${input.planName}.`)
+            announce(`Now using ${input.planName}.`)
           }}
         />
       )}
@@ -190,7 +200,82 @@ export default function PlanInput() {
           }}
         />
       )}
+
+      {plan && (
+        <button
+          type="button"
+          className={buttonSecondary}
+          onClick={() => {
+            setChanging(false)
+            setFocusAfter('summary')
+          }}
+        >
+          Keep {plan.planName}
+        </button>
+      )}
     </Panel>
+  )
+}
+
+/** Correct the two numbers that change most often, without redoing the whole plan. */
+function AdjustNumbers({
+  annualMaximum,
+  usedToDate,
+  onSave,
+}: {
+  annualMaximum: number
+  usedToDate: number
+  onSave: (patch: { annualMax: number; used: number }) => void
+}) {
+  const [max, setMax] = useState(String(annualMaximum))
+  const [used, setUsed] = useState(String(usedToDate))
+  const maxNum = Number(max)
+  const usedNum = Number(used)
+  const valid = max.trim() !== '' && used.trim() !== '' && maxNum >= 0 && usedNum >= 0 && Number.isFinite(maxNum + usedNum)
+  const unchanged = maxNum === annualMaximum && usedNum === usedToDate
+
+  return (
+    <form
+      noValidate
+      className="space-y-3 border-t border-line pt-4"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (valid && !unchanged) onSave({ annualMax: maxNum, used: usedNum })
+      }}
+    >
+      <p className="font-mono text-[11px] font-medium uppercase tracking-widest text-ink">Adjust your numbers</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-sm font-medium text-ink">
+          Annual maximum ($)
+          <input
+            type="number"
+            inputMode="decimal"
+            min={0}
+            step={50}
+            value={max}
+            onChange={(e) => setMax(e.target.value)}
+            aria-invalid={max.trim() === '' || maxNum < 0 ? true : undefined}
+            className={fieldInput}
+          />
+        </label>
+        <label className="block text-sm font-medium text-ink">
+          Used so far ($)
+          <input
+            type="number"
+            inputMode="decimal"
+            min={0}
+            step={25}
+            value={used}
+            onChange={(e) => setUsed(e.target.value)}
+            aria-invalid={used.trim() === '' || usedNum < 0 ? true : undefined}
+            className={fieldInput}
+          />
+        </label>
+      </div>
+      <button type="submit" disabled={!valid || unchanged} className={buttonSecondary}>
+        Update numbers
+      </button>
+    </form>
   )
 }
 
@@ -201,7 +286,7 @@ function SummaryRow({ label, value, hint, accent }: { label: string; value: stri
         {label}
         {hint && <span className="block text-xs">{hint}</span>}
       </dt>
-      <dd className={`${ledger.value} ${accent ? 'font-semibold text-amber-ink' : ''}`}>{value}</dd>
+      <dd className={`${ledger.value} ${accent ? 'font-semibold text-positive' : ''}`}>{value}</dd>
     </div>
   )
 }

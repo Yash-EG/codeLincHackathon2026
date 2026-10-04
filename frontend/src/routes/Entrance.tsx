@@ -28,7 +28,7 @@ export default function Entrance() {
       </RoomIntro>
 
       <Panel id="what" title="What Molarity does">
-        <ol className="border-t-2 border-ink">
+        <ol className="border-t-2 border-primary/70">
           {WHAT.map((item, i) => (
             <li key={item.title} className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3 border-b border-line py-4">
               <span className="font-mono text-sm tabular-nums text-ink-muted">{String(i + 1).padStart(2, '0')}</span>

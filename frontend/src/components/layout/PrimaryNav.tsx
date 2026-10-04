@@ -11,24 +11,24 @@ interface PrimaryItem {
 }
 
 /**
- * The three primary things Molarity does, surfaced in every room. These point
+ * The three primary things Molarity does, surfaced in every room, in the order you do them. These point
  * at existing rooms so there is one canonical page per function; the full
  * building Directory (all rooms) still lives beside the brand in the header.
  */
 const PRIMARY: PrimaryItem[] = [
   {
-    room: 'operatory',
-    to: '/operatory#describe',
-    label: 'Explore procedures',
-    blurb: 'Describe or pick your care',
-    icon: Stethoscope,
-  },
-  {
     room: 'imaging',
-    to: '/imaging#coverage',
+    to: '/imaging#ask',
     label: 'Decode your plan',
     blurb: 'Insurance jargon in plain English',
     icon: FileSearch,
+  },
+  {
+    room: 'operatory',
+    to: '/operatory#describe',
+    label: 'Add planned care',
+    blurb: 'Describe or pick your care',
+    icon: Stethoscope,
   },
   {
     room: 'providers',

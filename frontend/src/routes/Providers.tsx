@@ -81,7 +81,7 @@ function ProviderDirectory() {
           be balance-billed. Filter the list, then call to book.
         </p>
 
-        <div className="space-y-5 border-t-2 border-ink pt-5">
+        <div className="space-y-5 border-t-2 border-primary/70 pt-5">
           <SegmentedControl
             legend="Show"
             name="provider-network"
@@ -134,7 +134,7 @@ function ProviderDirectory() {
         {results.length === 0 ? (
           <p>No dentists match those filters. Try widening them.</p>
         ) : (
-          <ul className="border-t-2 border-ink">
+          <ul className="border-t-2 border-primary/70">
             {results.map((p) => (
               <li key={p.id}>
                 <ProviderRow provider={p} />
