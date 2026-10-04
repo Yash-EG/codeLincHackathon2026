@@ -13,7 +13,10 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -36,7 +39,7 @@ class EducationChatControllerTest {
 
     @Test
     void returnsAnswerForValidQuestion() throws Exception {
-        when(service.answer(anyString())).thenReturn(new EducationChatResponse(
+        when(service.answer(anyString(), any())).thenReturn(new EducationChatResponse(
                 EducationIntent.GENERAL_DEFINITION,
                 "In general: A deductible is the amount you may need to pay ...",
                 null,
@@ -56,7 +59,7 @@ class EducationChatControllerTest {
 
     @Test
     void estimateQuestionReturnsHandoffFlag() throws Exception {
-        when(service.answer(anyString())).thenReturn(new EducationChatResponse(
+        when(service.answer(anyString(), any())).thenReturn(new EducationChatResponse(
                 EducationIntent.ESTIMATE_REQUEST,
                 "I'll hand this to the cost-estimate tool.",
                 null,
@@ -78,5 +81,18 @@ class EducationChatControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"message\":\"\"}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void passesTheCheckedInMemberToTheService() throws Exception {
+        when(service.answer(anyString(), any())).thenReturn(new EducationChatResponse(
+                EducationIntent.PERSONAL_PLAN_QUESTION, "Your deductible is met.", true, false, List.of("deductible"), false));
+
+        mockMvc.perform(post("/api/education/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":\"Have I met my deductible?\",\"memberId\":\"5\"}"))
+                .andExpect(status().isOk());
+
+        verify(service).answer(eq("Have I met my deductible?"), eq("5"));
     }
 }

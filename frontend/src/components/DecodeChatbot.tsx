@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { ArrowRight, Send } from 'lucide-react'
 import { Link, useNavigate } from 'react-router'
 import { askEducation, type EducationChatResponse } from '../lib/educationChat'
-import type { DecodeChatMessage } from '../store/sessionStore'
+import { useSessionStore, type DecodeChatMessage } from '../store/sessionStore'
 import { useDentalStore } from '../store/useDentalStore'
 import { buttonPrimary, buttonSecondary, eyebrow, fieldInput, textLink, tileLift } from './ui'
 
@@ -47,7 +47,7 @@ export default function DecodeChatbot({ compact = false }: { compact?: boolean }
 
     let reply: { text: string; source: NonNullable<DecodeChatMessage['source']>; meta?: EducationChatResponse }
     try {
-      const res = await askEducation(text)
+      const res = await askEducation(text, useSessionStore.getState().memberId)
       reply = { text: res.answer, source: res.source, meta: res }
     } catch (err) {
       const reason = err instanceof Error ? err.message : 'unknown error'

@@ -53,6 +53,14 @@ from the in-browser mock, and the seeded database numbers are placeholders.
 
 The AI **never calculates coverage or prices.** Two separate integrations:
 
+- **Every result is the checked-in employee's.** Reception checks in an employee from the member
+  database (`GET /api/members`); estimates (`/api/analyze` `userId`) and the chatbot's personal answers
+  (`/api/education/chat` `memberId`) both use that person's plan and this year's usage. When the
+  database is up, the app starts on the demo employee's real plan rather than the offline sample.
+- **If Bedrock is unavailable**, `ResilientIntentExtractor` reads the question by keyword
+  (`KeywordIntentExtractor`, `ProcedurePhrases`) so estimates keep working; prices still come only
+  from the database and the calculator.
+
 - **Procedure-intent + estimate explanation** (`/api/analyze`): Bedrock is used
   *only* to interpret the message into a structured `DentalIntent`
   (`BedrockIntentExtractor`). The orchestrator (`AnalysisService`) then verifies

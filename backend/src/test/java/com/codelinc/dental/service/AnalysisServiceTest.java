@@ -512,4 +512,46 @@ class AnalysisServiceTest {
         assertThat(e.planPays()).isEqualByComparingTo("600.00"); // but numbers survive intact
         assertThat(e.patientPays()).isEqualByComparingTo("800.00");
     }
+
+    // ---- Context preamble and resuming ------------------------------------------------------------
+
+    @Test
+    void toothIsReadFromTheCurrentQuestionNotFromEarlierPrices() {
+        FakeData data = new FakeData();
+        DentalIntent crownNoTooth = new DentalIntent(DentalIntentType.COST_ESTIMATE,
+                new ProcedureReference("crown", "D2740", null), null);
+        // The frontend sends the conversation so far, then the question. "$1,110.00" must not become tooth #1.
+        String message = "Conversation so far:\nAssistant: You would pay $1,110.00.\n\nCurrent question: what about a crown?";
+
+        AnalysisResponse response = service(fakeIntent(crownNoTooth), data).analyze(USER, message);
+
+        assertThat(response.kind()).isEqualTo(AnalysisResponse.Kind.CLARIFICATION);
+        assertThat(response.clarificationQuestion()).contains("Which tooth");
+    }
+
+    @Test
+    void unconfirmedRecommendationCarriesTheProcedureAndToothSoYesContinues() {
+        FakeData data = new FakeData(); // no appointment recommended the crown
+        AnalysisService service = service(fakeIntent(crownComparisonRecommended()), data);
+
+        AnalysisResponse first = service.analyze(USER, "the crown my dentist recommended on 19");
+        assertThat(first.kind()).isEqualTo(AnalysisResponse.Kind.CLARIFICATION);
+        assertThat(first.pending()).isEqualTo(new PendingProcedure(CROWN_CDT, "Crown", 19));
+
+        // "yes" names nothing, but the echoed pending crown (with its tooth) is priced.
+        DentalIntent yes = new DentalIntent(DentalIntentType.UNSUPPORTED, null, null);
+        AnalysisResponse second = service(fakeIntent(yes), data).analyze(USER, "yes", first.pending());
+        assertThat(second.kind()).isEqualTo(AnalysisResponse.Kind.ESTIMATE);
+        assertThat(second.estimates().get(0).toothNumber()).isEqualTo(19);
+    }
+
+    @Test
+    void confirmingIsNotBlockedWhenTheAiReadsTheRecommendationAgain() {
+        FakeData data = new FakeData(); // still no appointment on file
+        // The AI re-reads the conversation and reports the recommendation claim again on the "yes" turn.
+        AnalysisResponse second = service(fakeIntent(crownComparisonRecommended()), data)
+                .analyze(USER, "yes", new PendingProcedure(CROWN_CDT, "Crown", 19));
+
+        assertThat(second.kind()).isEqualTo(AnalysisResponse.Kind.ESTIMATE);
+    }
 }

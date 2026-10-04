@@ -52,6 +52,12 @@ public class EducationIntentRouter {
             "\\b(my|mine|i['’]?ve|i have|do i have|am i|my plan|for me|i['’]?m enrolled)\\b",
             Pattern.CASE_INSENSITIVE);
 
+    // "How much of my maximum is left", "have I hit my deductible": a balance, not a price.
+    private static final Pattern BALANCE = Pattern.compile(
+            "\\b(annual max(imum)?|max(imum)?|deductible|benefits?)\\b.*\\b(left|remaining|used|met|reached|hit|spent)\\b"
+                    + "|\\b(left|remaining|used|met|reached|hit|spent)\\b.*\\b(annual max(imum)?|max(imum)?|deductible|benefits?)\\b",
+            Pattern.CASE_INSENSITIVE);
+
     // Personal-plan topics that aren't glossary definitions on their own.
     private static final Pattern PERSONAL_TOPIC = Pattern.compile(
             "\\b(remaining|left|used|balance|how much.*(max|deductible)|covered|coverage|benefit|limit|"
@@ -72,6 +78,12 @@ public class EducationIntentRouter {
         boolean mentionsProcedure = PROCEDURE.matcher(q).find();
         boolean personal = PERSONAL.matcher(q).find();
         List<GlossaryTerm> glossaryMatches = glossary.findMatches(q);
+
+        // 0) "How much of my annual maximum is left?" asks for the employee's balance, not a price.
+        //    "How much" alone would otherwise send it to the estimate handoff below.
+        if (personal && !mentionsProcedure && BALANCE.matcher(q).find()) {
+            return EducationIntent.PERSONAL_PLAN_QUESTION;
+        }
 
         // 1) Price/cost of a procedure -> estimate handoff (even if "my" appears).
         if (looksLikeEstimate && (mentionsProcedure || personal)) {

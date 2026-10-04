@@ -51,7 +51,10 @@ class DataAccessPlanFactsProviderTest {
         BenefitUsage outUsage =
                 new BenefitUsage(NetworkTier.OUT_OF_NETWORK, usd("0.00"), usd("600.00"));
 
+        String askedFor; // which member the provider looked up
+
         @Override public Optional<PlanContext> findActivePlan(String userId) {
+            askedFor = userId;
             return Optional.ofNullable(plan);
         }
 
@@ -129,5 +132,21 @@ class DataAccessPlanFactsProviderTest {
 
         assertThat(facts.remainingAnnualMaximum()).isNull();
         assertThat(facts.deductibleRemaining()).isNull();
+    }
+
+    @Test
+    void looksUpTheCheckedInMember() {
+        FakeData data = new FakeData();
+        assertThat(provider(data).planFactsFor("5")).isPresent();
+        assertThat(data.askedFor).isEqualTo("5");
+    }
+
+    @Test
+    void blankMemberFallsBackToTheDemoMember() {
+        FakeData data = new FakeData();
+        provider(data).planFactsFor("  ");
+        assertThat(data.askedFor).isEqualTo(MEMBER_ID);
+        provider(data).currentPlanFacts();
+        assertThat(data.askedFor).isEqualTo(MEMBER_ID);
     }
 }

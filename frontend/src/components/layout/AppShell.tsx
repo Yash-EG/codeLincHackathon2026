@@ -2,6 +2,7 @@ import { lazy, Suspense, useLayoutEffect } from 'react'
 import { Outlet, ScrollRestoration, useLocation } from 'react-router'
 import { useReducedMotion } from '../../a11y/useReducedMotion'
 import { useRouteFocus } from '../../a11y/useRouteFocus'
+import { useDefaultMember } from '../../lib/useDefaultMember'
 import { roomForPath } from '../../rooms'
 import { useViewMode } from '../../store/settingsStore'
 import { ParallaxScene } from '../Parallax'
@@ -26,6 +27,8 @@ export default function AppShell() {
   const { pathname } = useLocation()
   const room = roomForPath(pathname)
   useRouteFocus()
+  // The plan on screen is the employee's real one whenever the member database is up.
+  useDefaultMember()
 
   // Set before paint so panels never flash the wrong style.
   useLayoutEffect(() => {

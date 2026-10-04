@@ -83,12 +83,20 @@ public class EducationChatService {
     }
 
     public EducationChatResponse answer(String question) {
+        return answer(question, null);
+    }
+
+    /**
+     * Answer a question; personal-plan questions use {@code memberId}'s plan (the employee checked
+     * in at Reception), or the configured demo member when it is blank.
+     */
+    public EducationChatResponse answer(String question, String memberId) {
         EducationIntent intent = router.classify(question);
         return switch (intent) {
             case ESTIMATE_REQUEST -> estimateHandoff(question);
             case OUT_OF_SCOPE -> outOfScope();
             case GENERAL_DEFINITION -> generalDefinition(question);
-            case PERSONAL_PLAN_QUESTION -> personalPlan(question);
+            case PERSONAL_PLAN_QUESTION -> personalPlan(question, memberId);
         };
     }
 
@@ -146,10 +154,12 @@ public class EducationChatService {
 
     // --- PERSONAL PLAN: verified facts only ------------------------------------
 
-    private EducationChatResponse personalPlan(String question) {
+    private EducationChatResponse personalPlan(String question, String memberId) {
         List<GlossaryTerm> matches = glossary.findMatches(question);
         List<String> terms = matches.stream().map(GlossaryTerm::key).toList();
-        Optional<PlanFacts> factsOpt = planFactsProvider.currentPlanFacts();
+        Optional<PlanFacts> factsOpt = memberId == null || memberId.isBlank()
+                ? planFactsProvider.currentPlanFacts()
+                : planFactsProvider.planFactsFor(memberId);
 
         if (factsOpt.isEmpty()) {
             // Transparent: give the general rule, say specific amounts are unavailable.

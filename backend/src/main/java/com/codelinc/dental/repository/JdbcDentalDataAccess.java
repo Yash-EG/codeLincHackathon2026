@@ -1,5 +1,6 @@
 package com.codelinc.dental.repository;
 
+import com.codelinc.dental.intent.ProcedurePhrases;
 import com.codelinc.dental.model.NetworkTier;
 import com.codelinc.dental.service.calc.BenefitUsage;
 import com.codelinc.dental.service.calc.PlanRules;
@@ -17,7 +18,6 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -63,25 +63,12 @@ public class JdbcDentalDataAccess implements DentalDataAccess {
     private static final Set<String> TOOTH_SPECIFIC = Set.of(
             "Filling", "Crown", "Extraction", "Root Canal", "Implant");
 
-    /** Everyday synonyms mapped to canonical catalog names (schema has no alias column). */
-    private static final Map<String, String> SYNONYMS = Map.ofEntries(
-            Map.entry("cap", "Crown"),
-            Map.entry("caps", "Crown"),
-            Map.entry("crowns", "Crown"),
-            Map.entry("root canal therapy", "Root Canal"),
-            Map.entry("endodontic treatment", "Root Canal"),
-            Map.entry("cavity filling", "Filling"),
-            Map.entry("fillings", "Filling"),
-            Map.entry("tooth removal", "Extraction"),
-            Map.entry("pulling a tooth", "Extraction"),
-            Map.entry("extractions", "Extraction"),
-            Map.entry("cleaning teeth", "Cleaning"),
-            Map.entry("teeth cleaning", "Cleaning"),
-            Map.entry("scaling and root planing", "Deep Cleaning"),
-            Map.entry("x ray", "X-Ray"),
-            Map.entry("xray", "X-Ray"),
-            Map.entry("checkup", "Exam"),
-            Map.entry("check-up", "Exam"));
+    /** Every catalog procedure, for the forgiving second pass in {@link #resolveProcedure}. */
+    private static final String ALL_PROCEDURES_SQL = """
+            SELECT name, cdt_code
+            FROM procedures
+            ORDER BY name
+            """;
 
     private final JdbcTemplate jdbc;
 
@@ -120,7 +107,8 @@ public class JdbcDentalDataAccess implements DentalDataAccess {
             return ProcedureResolution.unknown();
         }
         String term = spokenName.trim().toLowerCase(Locale.ROOT);
-        String canonical = SYNONYMS.get(term); // may be null when the term is already canonical
+        // Everyday phrases ("cap", "checkup") map to canonical names; null when the term already is one.
+        String canonical = ProcedurePhrases.canonical(term).orElse(null);
 
         // Match the canonical synonym exactly if we have one; otherwise case-insensitive on name.
         String sql = """
@@ -133,7 +121,18 @@ public class JdbcDentalDataAccess implements DentalDataAccess {
         List<ResolvedProcedure> matches = jdbc.query(sql, PROCEDURE_MAPPER, lookup);
 
         if (matches.isEmpty()) {
-            return ProcedureResolution.unknown();
+            // Forgiving second pass: plurals, articles and longer phrasing ("two root canals",
+            // "a porcelain crown", "wisdom tooth removal"). Only names in the catalog can match.
+            Set<String> named = ProcedurePhrases.findIn(term);
+            if (named.isEmpty()) {
+                return ProcedureResolution.unknown();
+            }
+            matches = jdbc.query(ALL_PROCEDURES_SQL, PROCEDURE_MAPPER).stream()
+                    .filter(p -> named.contains(p.canonicalName()))
+                    .toList();
+            if (matches.isEmpty()) {
+                return ProcedureResolution.unknown();
+            }
         }
         if (matches.size() == 1) {
             return ProcedureResolution.resolved(matches.get(0));

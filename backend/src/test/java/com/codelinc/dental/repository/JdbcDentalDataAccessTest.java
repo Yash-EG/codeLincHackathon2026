@@ -161,4 +161,28 @@ class JdbcDentalDataAccessTest {
     void findRecentAppointmentsReturnsEmptyListForNonNumericUser() {
         assertThat(data.findRecentAppointments("bogus")).isEmpty();
     }
+
+    @Test
+    void resolveProcedureForgivesPluralsAndLongerPhrasing() {
+        // The exact lookup finds nothing for "two root canals"...
+        when(jdbc.query(anyString(), any(RowMapper.class), eq("two root canals")))
+                .thenReturn(List.of());
+        // ...so the resolver scans the catalog for the procedure the phrase names.
+        when(jdbc.query(anyString(), any(RowMapper.class)))
+                .thenReturn(List.of(
+                        new ResolvedProcedure("D2740", "Crown", true),
+                        new ResolvedProcedure("D3330", "Root Canal", true)));
+
+        ProcedureResolution res = data.resolveProcedure("two root canals");
+
+        assertThat(res.outcome()).isEqualTo(ProcedureResolution.Outcome.RESOLVED);
+        assertThat(res.procedure().canonicalName()).isEqualTo("Root Canal");
+    }
+
+    @Test
+    void resolveProcedureStillUnknownWhenNothingIsNamed() {
+        when(jdbc.query(anyString(), any(RowMapper.class), anyString())).thenReturn(List.of());
+        assertThat(data.resolveProcedure("something hurts").outcome())
+                .isEqualTo(ProcedureResolution.Outcome.UNKNOWN);
+    }
 }
