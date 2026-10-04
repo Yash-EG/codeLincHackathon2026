@@ -1,10 +1,10 @@
 package com.codelinc.dental.controller;
 
-import com.codelinc.dental.dto.DentalIntent;
 import com.codelinc.dental.dto.IntentRequest;
 import com.codelinc.dental.dto.ProcedureExplanationRequest;
 import com.codelinc.dental.dto.ProcedureExplanationResponse;
-import com.codelinc.dental.service.IntentExtractionService;
+import com.codelinc.dental.intent.DentalIntent;
+import com.codelinc.dental.intent.IntentExtractor;
 import com.codelinc.dental.service.ProcedureExplanationService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,35 +13,35 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Development endpoints that expose the AI layer so Jay (and the frontend) can integrate
- * and test it directly, without wiring through the full orchestration flow yet.
+ * Development endpoints that expose the AI layer directly so it can be integration-tested
+ * without the full orchestration flow.
  *
  * <ul>
- *   <li>{@code POST /api/ai/intent} — classify a user message into a {@link DentalIntent}.</li>
+ *   <li>{@code POST /api/ai/intent} — classify a user message into the backend-owned
+ *       {@link DentalIntent} (same type the orchestrator consumes).</li>
  *   <li>{@code POST /api/ai/explain-procedure} — turn trusted procedure text into a
  *       plain-language {@link ProcedureExplanationResponse}.</li>
  * </ul>
  *
- * <p>These reuse the shared validation and {@code GlobalExceptionHandler}, so malformed
- * input returns a clean 400 and Bedrock transport failures a clean 502. They are thin
- * pass-throughs to the services; business orchestration remains Jay's.
+ * <p>Thin pass-throughs reusing the shared validation and {@code GlobalExceptionHandler}.
+ * Business orchestration remains {@code AnalysisService}'s responsibility.
  */
 @RestController
 @RequestMapping("/api/ai")
 public class AiDevController {
 
-    private final IntentExtractionService intentExtractionService;
+    private final IntentExtractor intentExtractor;
     private final ProcedureExplanationService procedureExplanationService;
 
-    public AiDevController(IntentExtractionService intentExtractionService,
+    public AiDevController(IntentExtractor intentExtractor,
                            ProcedureExplanationService procedureExplanationService) {
-        this.intentExtractionService = intentExtractionService;
+        this.intentExtractor = intentExtractor;
         this.procedureExplanationService = procedureExplanationService;
     }
 
     @PostMapping("/intent")
     public DentalIntent extractIntent(@Valid @RequestBody IntentRequest request) {
-        return intentExtractionService.extractIntent(request.message());
+        return intentExtractor.interpret(request.message());
     }
 
     @PostMapping("/explain-procedure")

@@ -8,6 +8,12 @@ import com.codelinc.dental.dto.BenefitEstimate;
  * <p>Controllers and future business services depend on this interface, not on the
  * AWS SDK directly, so the Bedrock implementation can evolve (or be swapped/mocked)
  * without touching callers.
+ *
+ * <p>This stays a single-abstract-method interface ({@link #generateText(String)}),
+ * with {@link #explainEstimate(BenefitEstimate)} as a default, so it can be used as a
+ * functional interface (lambdas/fakes) in tests. The system-prompted structured call
+ * used by intent extraction lives on {@link StructuredAiService} instead, to keep this
+ * contract minimal.
  */
 public interface AiService {
 
@@ -19,20 +25,6 @@ public interface AiService {
      * @throws com.codelinc.dental.exception.AiServiceException if the model call fails
      */
     String generateText(String prompt);
-
-    /**
-     * Send a system instruction plus a user prompt and return the model's text response.
-     *
-     * <p>The system prompt steers behaviour (e.g. "reply with strict JSON only"); the
-     * user prompt carries the actual request. Used by structured features like intent
-     * extraction that need a dedicated system instruction.
-     *
-     * @param systemPrompt the system instruction
-     * @param userPrompt   the user prompt
-     * @return the model's text output
-     * @throws com.codelinc.dental.exception.AiServiceException if the model call fails
-     */
-    String generateText(String systemPrompt, String userPrompt);
 
     /**
      * Produce a plain-English explanation of an already-calculated {@link BenefitEstimate}.

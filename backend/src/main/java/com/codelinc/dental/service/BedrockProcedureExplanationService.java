@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 
 /**
  * Default {@link ProcedureExplanationService}: sends the trusted procedure description
- * through {@link AiService} (Bedrock) to produce a simplified, patient-friendly
+ * through {@link StructuredAiService} (Bedrock) to produce a simplified, patient-friendly
  * explanation.
  *
  * <p><strong>Refuse-to-invent:</strong> if no trusted description is supplied, the
@@ -25,9 +25,9 @@ public class BedrockProcedureExplanationService implements ProcedureExplanationS
             + "it involves. I can still help you understand your benefits or costs for a "
             + "procedure once it's identified.";
 
-    private final AiService aiService;
+    private final StructuredAiService aiService;
 
-    public BedrockProcedureExplanationService(AiService aiService) {
+    public BedrockProcedureExplanationService(StructuredAiService aiService) {
         this.aiService = aiService;
     }
 

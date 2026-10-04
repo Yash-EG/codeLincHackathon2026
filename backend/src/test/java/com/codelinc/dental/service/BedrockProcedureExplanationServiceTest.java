@@ -17,7 +17,7 @@ import static org.mockito.Mockito.when;
  */
 class BedrockProcedureExplanationServiceTest {
 
-    private final AiService aiService = mock(AiService.class);
+    private final StructuredAiService aiService = mock(StructuredAiService.class);
     private final BedrockProcedureExplanationService service =
             new BedrockProcedureExplanationService(aiService);
 

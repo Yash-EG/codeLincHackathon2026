@@ -63,4 +63,55 @@ class BedrockAiServiceTest {
                 .isInstanceOf(AiServiceException.class)
                 .hasMessageContaining("Failed to get a response");
     }
+
+    @Test
+    void explainEstimateReturnsTrimmedNarrative() {
+        BedrockAiService svc = new BedrockAiService(client, properties);
+
+        ConverseResponse response = ConverseResponse.builder()
+                .output(ConverseOutput.builder()
+                        .message(Message.builder()
+                                .content(ContentBlock.fromText("  Your plan pays $600 and you pay $800.  "))
+                                .build())
+                        .build())
+                .build();
+        when(client.converse(ArgumentMatchers.<Consumer<ConverseRequest.Builder>>any()))
+                .thenReturn(response);
+
+        String text = svc.explainEstimate(sampleEstimate());
+
+        assertThat(text).isEqualTo("Your plan pays $600 and you pay $800.");
+    }
+
+    @Test
+    void explainEstimateReturnsNullOnNullInput() {
+        BedrockAiService svc = new BedrockAiService(client, properties);
+        assertThat(svc.explainEstimate(null)).isNull();
+    }
+
+    @Test
+    void explainEstimateReturnsNullOnFailureSoEstimateIsPreserved() {
+        BedrockAiService svc = new BedrockAiService(client, properties);
+
+        when(client.converse(ArgumentMatchers.<Consumer<ConverseRequest.Builder>>any()))
+                .thenThrow(new RuntimeException("model down"));
+
+        // explainEstimate swallows failures and returns null (never throws) so the
+        // authoritative estimate is never blocked or corrupted.
+        assertThat(svc.explainEstimate(sampleEstimate())).isNull();
+    }
+
+    private static com.codelinc.dental.dto.BenefitEstimate sampleEstimate() {
+        return new com.codelinc.dental.dto.BenefitEstimate(
+                "D2740", "Crown", 19,
+                com.codelinc.dental.model.NetworkTier.IN_NETWORK,
+                new java.math.BigDecimal("1400.00"),
+                new java.math.BigDecimal("1400.00"),
+                new java.math.BigDecimal("600.00"),
+                new java.math.BigDecimal("800.00"),
+                new java.math.BigDecimal("50.00"),
+                new java.math.BigDecimal("0.00"),
+                new java.math.BigDecimal("400.00"),
+                null);
+    }
 }
