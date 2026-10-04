@@ -10,14 +10,14 @@ import ChatPanel from '../assistant/ChatPanel'
 import { buttonPrimary, buttonSecondary } from '../ui'
 
 const SUGGESTIONS = [
-  'Root canal on tooth #14',
+  'I might need a root canal',
   'I need a crown on my upper right molar',
   'Can I get another cleaning this year?',
   'What expires on Dec 31?',
 ]
 
 /**
- * The benefits assistant (Bedrock later, the offline mock today) in a native
+ * The benefits assistant (Bedrock, via POST /api/analyze) in a native
  * modal <dialog>: the page behind is inert, Escape closes it, and focus goes
  * back to the button that opened it.
  */

@@ -2,8 +2,6 @@ import { useState, type FormEvent } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { Link } from 'react-router'
 import { useShallow } from 'zustand/react/shallow'
-import { PROCEDURES } from '../../data/mockData'
-import { COVERAGE_LABEL } from '../../lib/estimate'
 import { formatShortDate, formatUsd } from '../../lib/format'
 import { useAssistant } from '../../lib/useAssistant'
 import { useLineItems, useNextYearPlan } from '../../store/selectors'
@@ -14,15 +12,6 @@ import { CdtBadge, WaitingChip } from '../Chip'
 import ExploreProcedureForm, { type ExploreAnswers } from '../ExploreProcedureForm'
 import Panel from '../Panel'
 import { buttonPrimary, buttonQuiet, eyebrow, fieldInput, ledger, textLink } from '../ui'
-
-/** The CDT code each Explore-form choice most often means. */
-const CODE_FOR_EXPLORE: Record<string, string> = {
-  cleaning: 'D1110',
-  filling: 'D2391',
-  crown: 'D2740',
-  'root-canal': 'D3330',
-  extraction: 'D7140',
-}
 
 /** Explore-form procedures, phrased the way the assistant reads them ("unsure" has none). */
 const EXPLORE_PHRASE: Record<string, string> = {
@@ -50,30 +39,13 @@ export default function TreatmentMap() {
 
   // Continue on the Explore form routes the chosen procedure to the estimate API.
   async function explore(answers: ExploreAnswers) {
+    // The ZIP and radius also set where the Providers map looks.
+    useSessionStore.getState().setSearchLocation(answers.zip, Number(answers.radius) || 25)
     const phrase = EXPLORE_PHRASE[answers.procedure]
     if (!phrase) return
     const text = selectedTooth != null ? `${phrase} on tooth #${selectedTooth}` : phrase
     setProcedureInput(text)
     announce(`Pricing "${text}"…`)
-
-    // Form -> chat: say what the plan does with it.
-    const session = useSessionStore.getState()
-    const code = CODE_FOR_EXPLORE[answers.procedure]
-    const proc = code ? PROCEDURES[code] : undefined
-    const tier = proc && session.tiers?.[proc.coverageClass]
-    if (proc && tier) {
-      session.addChatMessage({
-        sender: 'assistant',
-        kind: 'context',
-        source: 'plan',
-        timestamp: new Date().toISOString(),
-        text:
-          `${proc.shortName} (${proc.cdtCode}) is ${COVERAGE_LABEL[proc.coverageClass]} care on your ${session.plan?.planName}: ` +
-          `${tier.planPaysPctInNetwork}% covered in-network, ${tier.planPaysPctOutNetwork}% out-of-network. ` +
-          (tier.waitingPeriodMonths > 0 ? `There is a ${tier.waitingPeriodMonths}-month waiting period. ` : 'No waiting period. ') +
-          'Pricing it now with your plan…',
-      })
-    }
 
     // Route to the estimate API (useAssistant -> POST /api/analyze, with mock
     // fallback). The reply carries the backend's prose + cost analysis.

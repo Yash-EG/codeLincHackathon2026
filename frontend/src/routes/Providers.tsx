@@ -8,6 +8,7 @@ import RoomGate from '../components/RoomGate'
 import RoomIntro from '../components/RoomIntro'
 import SegmentedControl from '../components/SegmentedControl'
 import { buttonSecondary, eyebrow, fieldInput, textLink } from '../components/ui'
+import { milesBetween, useZipCenter } from '../lib/geo'
 import { AREAS, areaOf, hasCoordinates, mapToken, type AreaId } from '../lib/providerMap'
 import { ROOMS_BY_ID } from '../rooms'
 import { useSessionStore } from '../store/sessionStore'
@@ -43,6 +44,8 @@ export default function Providers() {
 function ProviderDirectory() {
   const providers = useSessionStore((s) => s.providers)
   const plan = useSessionStore((s) => s.plan)
+  const searchZip = useSessionStore((s) => s.searchZip)
+  const radius = useSessionStore((s) => s.searchRadiusMiles)
   const [area, setArea] = useState<AreaId>('greensboro')
   const [network, setNetwork] = useState<NetworkFilter>('IN_NETWORK')
   const [specialty, setSpecialty] = useState<string>(ALL_SPECIALTIES)
@@ -57,7 +60,20 @@ function ProviderDirectory() {
   // The map needs a Mapbox token and WebGL. Without either, the page is just the list.
   const mapAvailable = useMemo(() => Boolean(mapToken()) && hasWebGL(), [])
 
-  const inArea = useMemo(() => providers.filter((p) => areaOf(p) === area), [providers, area])
+  // A ZIP from "Add planned care" sets where we look: distances are measured from it and only dentists
+  // within the radius show. Without one (or if it can't be located) the Area switch picks the city.
+  const zip = useZipCenter(searchZip)
+  const origin = zip.status === 'found' ? zip.center : null
+
+  const inArea = useMemo(() => {
+    if (origin) {
+      return providers
+        .filter(hasCoordinates)
+        .map((p) => ({ ...p, distanceMiles: milesBetween([origin[1], origin[0]], [p.lat, p.lng]) }))
+        .filter((p) => p.distanceMiles <= radius)
+    }
+    return providers.filter((p) => areaOf(p) === area)
+  }, [providers, area, origin, radius])
   const specialties = useMemo(() => Array.from(new Set(inArea.map((p) => p.specialty))).sort(), [inArea])
 
   const results = useMemo(
@@ -118,6 +134,32 @@ function ProviderDirectory() {
         </p>
 
         <div className="space-y-5 border-t-2 border-primary/70 pt-5">
+          {origin ? (
+            <p className="text-ink-muted" aria-live="polite">
+              Within <span className="font-semibold text-ink">{radius} miles</span> of ZIP{' '}
+              <span className="font-mono font-semibold text-ink">{searchZip}</span> (from your answers in Add planned
+              care).{' '}
+              <Link to="/operatory#explore" className={textLink}>
+                Change
+              </Link>
+            </p>
+          ) : (
+            <>
+              {zip.status === 'loading' && <p className="text-ink-muted">Locating ZIP {searchZip}&hellip;</p>}
+              {(zip.status === 'unknown' || zip.status === 'error') && (
+                <p className="text-ink-muted">
+                  Couldn&rsquo;t locate ZIP {searchZip}, so showing the area you pick below.
+                </p>
+              )}
+              {zip.status === 'none' && (
+                <p className="text-ink-muted">
+                  Enter a ZIP in{' '}
+                  <Link to="/operatory#explore" className={textLink}>
+                    Add planned care
+                  </Link>{' '}
+                  to search near you, or pick an area.
+                </p>
+              )}
           <SegmentedControl
             legend="Area"
             name="provider-area"
@@ -130,6 +172,8 @@ function ProviderDirectory() {
               announce(`Showing dentists in ${AREAS.find((a) => a.value === value)?.label}.`)
             }}
           />
+            </>
+          )}
           <SegmentedControl
             legend="Show"
             name="provider-network"
@@ -198,7 +242,13 @@ function ProviderDirectory() {
               </div>
             }
           >
-            <ProviderMap providers={results} selectedId={selectedId} onSelect={select} onFail={() => setMapFailed(true)} />
+            <ProviderMap
+              providers={results}
+              selectedId={selectedId}
+              onSelect={select}
+              center={origin}
+              onFail={() => setMapFailed(true)}
+            />
           </Suspense>
         </Panel>
       )}

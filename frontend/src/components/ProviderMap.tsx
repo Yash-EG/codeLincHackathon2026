@@ -15,6 +15,8 @@ interface ProviderMapProps {
   providers: Provider[]
   selectedId: string | null
   onSelect: (id: string | null) => void
+  /** The searched ZIP's location: marked on the map, and kept in view when the pins are fitted. */
+  center?: [number, number] | null
   /** Called if the map can't load (a bad token, no WebGL), so the page can drop its "Show on map" buttons. */
   onFail?: () => void
 }
@@ -26,9 +28,20 @@ interface Pin {
 
 const BUILDINGS = 'providers-3d-buildings'
 
-function fitTo(map: mapboxgl.Map, providers: Provider[], animate: boolean) {
-  const bounds = boundsOf(providers)
-  if (!bounds) return
+function fitTo(map: mapboxgl.Map, providers: Provider[], animate: boolean, center?: [number, number] | null) {
+  const found = boundsOf(providers)
+  if (!found && center) {
+    // Nobody in range: show the searched area itself.
+    map.easeTo({ center, zoom: 10, duration: animate ? 800 : 0 })
+    return
+  }
+  if (!found) return
+  const bounds: typeof found = center
+    ? [
+        [Math.min(found[0][0], center[0]), Math.min(found[0][1], center[1])],
+        [Math.max(found[1][0], center[0]), Math.max(found[1][1], center[1])],
+      ]
+    : found
   map.fitBounds(bounds, {
     padding: 64,
     maxZoom: 14,
@@ -48,7 +61,7 @@ function fitTo(map: mapboxgl.Map, providers: Provider[], animate: boolean) {
  * <button>, and the list below carries the same information. Loaded lazily
  * (Mapbox is large) and only when there is a token and WebGL.
  */
-export default function ProviderMap({ providers, selectedId, onSelect, onFail }: ProviderMapProps) {
+export default function ProviderMap({ providers, selectedId, onSelect, center, onFail }: ProviderMapProps) {
   const container = useRef<HTMLDivElement>(null)
   const mapRef = useRef<mapboxgl.Map | null>(null)
   const pins = useRef(new Map<string, Pin>())
@@ -64,9 +77,9 @@ export default function ProviderMap({ providers, selectedId, onSelect, onFail }:
   const located = useMemo(() => providers.filter(hasCoordinates), [providers])
 
   // The latest props for the map's long-lived callbacks, so they never read stale values.
-  const latest = useRef({ flat, rotating, selectedId, onSelect, onFail })
+  const latest = useRef({ flat, rotating, selectedId, onSelect, onFail, center })
   useEffect(() => {
-    latest.current = { flat, rotating, selectedId, onSelect, onFail }
+    latest.current = { flat, rotating, selectedId, onSelect, onFail, center }
   })
 
   // Pins follow the filtered list.
@@ -93,7 +106,7 @@ export default function ProviderMap({ providers, selectedId, onSelect, onFail }:
       added.set(p.id, { marker, popup })
     }
     pins.current = added
-    fitTo(map, located, !firstFit.current && !latest.current.flat)
+    fitTo(map, located, !firstFit.current && !latest.current.flat, latest.current.center)
     firstFit.current = false
     return () => {
       disposed = true
@@ -103,7 +116,22 @@ export default function ProviderMap({ providers, selectedId, onSelect, onFail }:
       }
       pins.current = new Map()
     }
-  }, [ready, located])
+  }, [ready, located, center])
+
+  // A marker on the searched ZIP, so the pins read as "near here".
+  useEffect(() => {
+    const map = mapRef.current
+    if (!ready || !map || !center) return
+    const dot = document.createElement('div')
+    dot.setAttribute('aria-hidden', 'true')
+    dot.title = 'Your ZIP code'
+    dot.style.cssText =
+      'width:18px;height:18px;border-radius:9999px;background:#fff;border:5px solid #0d9488;box-shadow:0 0 0 4px rgba(13,148,136,.25)'
+    const marker = new mapboxgl.Marker({ element: dot }).setLngLat(center).addTo(map)
+    return () => {
+      marker.remove()
+    }
+  }, [ready, center])
 
   // The chosen dentist: highlight the pin, fly to it, open its card.
   useEffect(() => {
@@ -273,6 +301,7 @@ export default function ProviderMap({ providers, selectedId, onSelect, onFail }:
           )}
           <p className="text-sm text-ink-muted">
             {located.length} {located.length === 1 ? 'dentist' : 'dentists'} on the map.
+            {center && ' The ringed dot is your ZIP.'}
           </p>
         </div>
       </div>

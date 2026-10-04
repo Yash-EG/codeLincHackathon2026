@@ -20,7 +20,7 @@ export interface DentalState {
   pending: number
   /** e.g. "Lincoln Preferred PPO"; null until a plan is checked in. */
   selectedPlan: string | null
-  /** What the user typed in "Describe your care" (default: "Root canal on tooth #14"). */
+  /** What the user typed in "Describe your care" (empty until typed). */
   procedureInput: string
   aiAnalysis: AiAnalysis | null
   /** The "Decode your plan" chatbot transcript. */

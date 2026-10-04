@@ -5,7 +5,7 @@
 
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
-import { CLAIMS, PROVIDERS, SAMPLE_PLANS, SAMPLE_PROCEDURE_INPUT, type SamplePlanId } from '../data/mockData'
+import { CLAIMS, PROVIDERS, SAMPLE_PLANS, type SamplePlanId } from '../data/mockData'
 import { daysUntil, formatUsd } from '../lib/format'
 import type {
   AiAnalysis,
@@ -41,10 +41,8 @@ export interface DecodeChatMessage {
   text: string
   /** ISO 8601. */
   timestamp: string
-  /** Where an assistant answer came from: your plan's numbers, the backend, or an error when it was unreachable. */
-  source?: 'plan' | 'backend' | 'error'
-  /** 'context': the co-pilot reacting to a form (a tooth picked, a plan switched), not to a question. */
-  kind?: 'context'
+  /** Where an assistant answer came from: the backend, or an error when it was unreachable. */
+  source?: 'backend' | 'error'
 }
 
 export interface SessionData {
@@ -63,6 +61,9 @@ export interface SessionData {
   selectedTooth: number | null
   /** What the user typed in "Describe your care". */
   procedureInput: string
+  /** Where to look for dentists: the ZIP and travel radius from the Explore form ("" until it's submitted). */
+  searchZip: string
+  searchRadiusMiles: number
   /** The assistant's read of the last procedure it priced. */
   aiAnalysis: AiAnalysis | null
   messages: ChatMessage[]
@@ -85,6 +86,7 @@ interface SessionActions {
   updateBenefits: (patch: { annualMax?: number; used?: number }) => void
   setProcedureInput: (text: string) => void
   setAiAnalysis: (analysis: AiAnalysis | null) => void
+  setSearchLocation: (zip: string, radiusMiles: number) => void
   setNetwork: (network: NetworkTier) => void
   selectTooth: (toothNumber: number | null) => void
   appendMessage: (message: ChatMessage) => void
@@ -106,7 +108,9 @@ const EMPTY: SessionData = {
   providers: [],
   network: 'IN_NETWORK',
   selectedTooth: null,
-  procedureInput: SAMPLE_PROCEDURE_INPUT,
+  procedureInput: '',
+  searchZip: '',
+  searchRadiusMiles: 25,
   aiAnalysis: null,
   messages: [],
   chatHistory: [],
@@ -147,7 +151,9 @@ export const useSessionStore = create<SessionState>()(
     (set) => ({
       ...DEFAULT_SESSION,
 
-      loadSamplePlan: (id = 'preferred') => set(sampleSession(id)),
+      // Switching plans keeps where you're searching.
+      loadSamplePlan: (id = 'preferred') =>
+        set((s) => ({ ...sampleSession(id), searchZip: s.searchZip, searchRadiusMiles: s.searchRadiusMiles })),
 
       setManualPlan: (input) => {
         // A plan year ends on planYearEnd and starts the day after the same date a year earlier.
@@ -236,6 +242,7 @@ export const useSessionStore = create<SessionState>()(
         }),
       setProcedureInput: (procedureInput) => set({ procedureInput }),
       setAiAnalysis: (aiAnalysis) => set({ aiAnalysis }),
+      setSearchLocation: (searchZip, searchRadiusMiles) => set({ searchZip, searchRadiusMiles }),
       setNetwork: (network) => set({ network }),
       selectTooth: (selectedTooth) => set({ selectedTooth }),
       appendMessage: (message) => set((s) => ({ messages: [...s.messages, message] })),
@@ -244,9 +251,9 @@ export const useSessionStore = create<SessionState>()(
     }),
     {
       name: 'molarity-session',
-      // v6: the directory adds Greensboro offices. v5: providers carry map coordinates. (v4: a default plan is loaded up front and the decode
+      // v7: the Explore form's ZIP and radius are kept. v6: the directory adds Greensboro offices. v5: providers carry map coordinates. (v4: a default plan is loaded up front and the decode
       // chatbot keeps a transcript.) Older sessions start over.
-      version: 6,
+      version: 7,
       migrate: () => DEFAULT_SESSION as SessionState,
       storage: createJSONStorage(() => sessionStorage),
     },

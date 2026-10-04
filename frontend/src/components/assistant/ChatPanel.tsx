@@ -159,7 +159,7 @@ export default function ChatPanel({
             placeholder={
               selectedTooth
                 ? `What does your dentist recommend for #${selectedTooth.number}?`
-                : 'e.g. “Root canal on tooth #14”'
+                : 'Describe the care your dentist recommended'
             }
             autoComplete="off"
             className="min-h-11 min-w-0 flex-1 rounded-lg border border-control bg-surface px-3 text-sm text-ink placeholder:text-ink-muted"

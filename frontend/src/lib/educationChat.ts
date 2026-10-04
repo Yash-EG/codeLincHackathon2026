@@ -1,7 +1,7 @@
 // Client for the benefits-EDUCATION chatbot (backend: POST /api/education/chat).
 //
 // This is a SEPARATE capability from the procedure-estimate assistant in
-// lib/mockAssistant.ts. It answers general benefits questions ("what is a
+// lib/useAssistant.ts. It answers general benefits questions ("what is a
 // deductible?") and, when verified plan facts are available server-side,
 // personal-plan questions. It never computes prices — those become an estimate
 // handoff.

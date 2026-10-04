@@ -1,40 +1,28 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { ArrowRight, Send, Sparkles } from 'lucide-react'
+import { ArrowRight, Send } from 'lucide-react'
 import { Link, useNavigate } from 'react-router'
-import { askCopilot } from '../lib/copilot'
 import { askEducation, type EducationChatResponse } from '../lib/educationChat'
-import { useSessionStore, type DecodeChatMessage } from '../store/sessionStore'
+import type { DecodeChatMessage } from '../store/sessionStore'
 import { useDentalStore } from '../store/useDentalStore'
 import { buttonPrimary, buttonSecondary, eyebrow, fieldInput, textLink, tileLift } from './ui'
 
 const SOURCE_LABEL: Record<NonNullable<DecodeChatMessage['source']>, string> = {
-  plan: 'From your plan',
   backend: 'Benefits assistant',
   error: 'Assistant unavailable',
 }
 
-/** Quick-action pills under the input. The tooth one follows whatever is selected on the chart. */
-function suggestionsFor(selectedTooth: number | null): string[] {
-  return [
-    'Explain my deductible',
-    'Show in-network savings',
-    `Is Tooth #${selectedTooth ?? 30} covered?`,
-    'What happens if I get a crown in November?',
-  ]
-}
+/** Quick-action pills under the input: just questions to send to the assistant. */
+const SUGGESTIONS = ['Explain my deductible', 'Show in-network savings', 'What is a copay?', 'What happens if I get a crown in November?']
 
 /**
- * The co-pilot: a chat that decodes the plan and works with the forms in both
- * directions. Picking a tooth, switching plan or adding care elsewhere drops a
- * note into this feed (see useCopilotFeed). Asking about "tooth #30" or "a crown
- * in November" here selects the tooth and fills in the care form. General terms go
- * to the backend (POST /api/education/chat, Amazon Bedrock); anything about the
- * member's own numbers is answered from the plan, so amounts are exact.
+ * "Decode your plan": a chat that turns insurance jargon into plain English.
+ * Every question goes to the backend (POST /api/education/chat, Amazon Bedrock).
+ * There are no canned answers: if the backend can't answer, the chat says so.
+ * The transcript lives in the store, so it survives moving between rooms.
  */
 export default function DecodeChatbot({ compact = false }: { compact?: boolean }) {
   const chatHistory = useDentalStore((s) => s.chatHistory)
   const addChatMessage = useDentalStore((s) => s.addChatMessage)
-  const selectedTooth = useSessionStore((s) => s.selectedTooth)
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState('')
@@ -59,20 +47,12 @@ export default function DecodeChatbot({ compact = false }: { compact?: boolean }
 
     let reply: { text: string; source: NonNullable<DecodeChatMessage['source']>; meta?: EducationChatResponse }
     try {
-      const session = useSessionStore.getState()
-      const local = askCopilot(text, session)
-      if (local) {
-        // Chat -> forms: the question can pick the tooth and fill in the care field.
-        if (local.selectTooth != null) session.selectTooth(local.selectTooth)
-        if (local.procedureInput) session.setProcedureInput(local.procedureInput)
-        reply = { text: local.text, source: 'plan' }
-      } else {
-        const res = await askEducation(text)
-        reply = { text: res.answer, source: res.source, meta: res }
-      }
-    } catch {
+      const res = await askEducation(text)
+      reply = { text: res.answer, source: res.source, meta: res }
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : 'unknown error'
       reply = {
-        text: "I couldn't reach the benefits assistant just now, so I can't answer that. Please try again in a moment.",
+        text: `I couldn't get an answer from the benefits assistant (${reason}).`,
         source: 'error',
       }
     }
@@ -117,10 +97,9 @@ export default function DecodeChatbot({ compact = false }: { compact?: boolean }
                 </p>
               </li>
             ) : (
-              <li key={i} className={`py-3.5 ${m.kind === 'context' ? 'border-l-2 border-accent pl-3' : ''}`}>
-                <p className={`${eyebrow} flex items-center gap-1.5 text-primary`} aria-hidden="true">
-                  {m.kind === 'context' && <Sparkles className="size-3" />}
-                  {m.kind === 'context' ? 'Co-pilot note' : SOURCE_LABEL[m.source ?? 'backend']}
+              <li key={i} className="py-3.5">
+                <p className={`${eyebrow} text-primary`} aria-hidden="true">
+                  {SOURCE_LABEL[m.source ?? 'backend']}
                 </p>
                 <p className="mt-1 max-w-[62ch] text-ink">
                   <span className="sr-only">Benefits assistant: </span>
@@ -171,7 +150,7 @@ export default function DecodeChatbot({ compact = false }: { compact?: boolean }
       </form>
 
       <div role="group" aria-label="Suggested questions" className="flex flex-wrap gap-2">
-        {suggestionsFor(selectedTooth).map((s) => (
+        {SUGGESTIONS.map((s) => (
           <button
             key={s}
             type="button"
