@@ -1,7 +1,7 @@
 // The building directory: one entry per route. Navigation, door cards, page
 // titles and screen-reader arrival announcements all read from this list.
 
-/** 'hallway' has no page of its own; it's still the 3D office's default room (404s, door fly-throughs). */
+/** 'entrance' and 'hallway' have no page of their own; they're still rooms in the 3D office (404s, door fly-throughs). */
 export type RoomId = 'entrance' | 'reception' | 'hallway' | 'operatory' | 'imaging' | 'consult' | 'billing' | 'records' | 'providers'
 
 /** What a room needs before it has anything to show. Doors still work; they say what's missing. */
@@ -23,13 +23,6 @@ export interface Room {
 
 export const ROOMS: Room[] = [
   {
-    id: 'entrance',
-    path: '/',
-    name: 'Entrance',
-    purpose: 'Start here.',
-    description: 'Molarity reads your dental plan, prices the care your dentist recommended and tells you when to schedule it.',
-  },
-  {
     id: 'reception',
     path: '/reception',
     name: 'Reception',
@@ -44,7 +37,7 @@ export const ROOMS: Room[] = [
     name: 'Imaging',
     purpose: 'Decode your plan with the assistant.',
     description:
-      'The X-ray room, where the fine print gets a closer look. Ask the assistant about your coverage in plain English, or read what each kind of care is covered at, waiting periods and frequency limits.',
+      'The X-ray room, where the fine print gets a closer look. Ask the assistant about your coverage in plain English.',
     requirement: 'Decode plan',
     prerequisite: 'plan',
   },

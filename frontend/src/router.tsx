@@ -1,8 +1,7 @@
-import { createBrowserRouter } from 'react-router'
+import { createBrowserRouter, redirect } from 'react-router'
 import AppShell from './components/layout/AppShell'
 import Billing from './routes/Billing'
 import Consult from './routes/Consult'
-import Entrance from './routes/Entrance'
 import Imaging from './routes/Imaging'
 import NotFound from './routes/NotFound'
 import Operatory from './routes/Operatory'
@@ -15,7 +14,8 @@ export const router = createBrowserRouter([
   {
     element: <AppShell />,
     children: [
-      { index: true, element: <Entrance /> },
+      // No landing page: the site opens straight into Reception.
+      { index: true, loader: () => redirect('/reception') },
       { path: 'reception', element: <Reception /> },
       { path: 'operatory', element: <Operatory /> },
       { path: 'imaging', element: <Imaging /> },
