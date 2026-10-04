@@ -1,53 +1,55 @@
 @import "tailwindcss";
 
 /*
- * Light "dental office" theme: blue, mint and sage. Every color the UI uses is
- * a token here (Tailwind v4 reads them from @theme; there is no tailwind.config.js).
+ * Editorial theme: a warm off-white canvas, charcoal type, deep maroon for
+ * actions and amber held back for alerts. Hairline rules instead of shadows.
+ * Every color the UI uses is a token here (Tailwind v4 reads them from @theme;
+ * there is no tailwind.config.js).
  *
- * Contrast (WCAG 2.2 AA), measured on cream #FBF8F1 and on the worst-case
- * frosted panel (88% cream over a pure-black scene):
- *   ink          13.8:1 / 10.5:1      ink-muted   6.7:1 / 5.1:1
- *   primary       8.2:1 /  6.2:1      warning     6.4:1 / 4.9:1
- *   danger        6.1:1 /  4.6:1      success     6.0:1
- * accent and the viz-* colors are for marks only (>= 3:1), never for small text.
- * mint / sage / sky are backgrounds: dark text only, never white text.
+ * Contrast (WCAG 2.2 AA) on the canvas #FAF9F5 / on paper #F4F1EA:
+ *   ink          16.0:1 / 15.0:1     ink-muted    6.1:1 / 5.7:1
+ *   primary       8.9:1 /  8.3:1     amber-ink    5.9:1 / 5.5:1
+ *   danger        6.2:1 /  5.8:1     success      6.1:1 / 5.7:1
+ *   control       4.1:1 /  3.8:1 (input and control borders; WCAG 1.4.11 needs 3:1)
+ *   white on primary 9.4:1
+ * amber (#D96B27, 3.3:1) and the viz-* colors are for marks and large numerals
+ * only, never small text. line and rule are decorative hairlines.
  */
 @theme {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: Georgia, Garamond, "Times New Roman", serif;
   --font-mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, monospace;
 
   /* Text */
-  --color-ink: #1f2a33;
-  --color-ink-muted: #4a5a66;
-  --color-primary: #1f4e79; /* links, buttons, focus ring (white on it: 8.7:1) */
-  --color-primary-strong: #1b3a5c; /* hover / pressed */
+  --color-ink: #1c1d1f;
+  --color-ink-muted: #5a6065;
+  --color-primary: #8a1538; /* maroon: CTAs, active and selected states, links, focus ring */
+  --color-primary-strong: #6e0f2c; /* hover / pressed */
+
+  /* Amber: alerts, remaining balances, pending actions */
+  --color-amber: #d96b27; /* marks and large numerals only */
+  --color-amber-ink: #9a4a12; /* amber text at body size */
 
   /* Status text: always paired with an icon and a label */
   --color-success: #1e6b52;
-  --color-warning: #8a4b08;
-  --color-danger: #b4233c;
-
-  /* Non-text accent: progress fills and large marks (3.6:1 on the track) */
-  --color-accent: #0e8a6c;
-
-  /* Walls and backgrounds */
-  --color-mint: #d3efe3;
-  --color-sage: #c9d6c0;
-  --color-sky: #d6e6f2;
+  --color-warning: #9a4a12;
+  --color-danger: #b42318;
 
   /* Surfaces and lines */
-  --color-surface: #fbf8f1; /* warm white */
-  --color-cream: #f5efe3;
-  --color-track: #e4ece6; /* empty part of a meter */
-  --color-line: #ddd5c6; /* decorative hairlines */
-  --color-control: #66737f; /* input and control borders: 4.6:1 */
+  --color-surface: #faf9f5; /* canvas: panels, header, max bar */
+  --color-paper: #f4f1ea; /* page behind the sheet, table heads, dropzone */
+  --color-cream: #f4f1ea; /* hover wash (same as paper) */
+  --color-track: #e7e5e4; /* empty part of a meter */
+  --color-line: #e7e5e4; /* decorative hairlines (stone-200) */
+  --color-rule: #d6d3d1; /* dashed dropzone border (stone-300) */
+  --color-control: #767b80; /* input and control borders */
 
-  /* Data marks, validated with the dataviz checker on the cream surface
-     (lightness band, chroma, CVD separation, >= 3:1). "Planned" is also hatched. */
-  --color-viz-plan: #0e8a6c; /* insurance pays / maximum used */
-  --color-viz-planned: #2563a6; /* planned spend */
-  --color-viz-you: #b4632a; /* you pay */
-  --color-viz-treated: #7a5cc7; /* treated this plan year */
+  /* Data marks, validated with the dataviz checker on the canvas (lightness
+     band, chroma floor, CVD and normal-vision separation, >= 3:1). */
+  --color-viz-plan: #2b65a0; /* insurance pays / maximum used */
+  --color-viz-you: #a8234a; /* you pay */
+  --color-viz-planned: #d96b27; /* pending / planned (also hatched) */
+  --color-viz-treated: #5a6065; /* treated this plan year (status mark, with text) */
 }
 
 /* data-view is set on <html> by AppShell: the same pages, with or without the 3D layer. */
@@ -57,10 +59,12 @@
 @custom-variant short (@media (max-height: 30rem));
 
 :root {
-  /* Frosted glass panels. Blur does not count toward contrast, so 0.88 is the
-     floor: every text token stays AA even if the scene behind is pure black. */
-  --panel-bg: rgb(251 248 241 / 0.88);
-  --page-bg: var(--color-mint);
+  /* Panels are 98% canvas: no blur needed, and every text token keeps its
+     contrast whatever the 3D scene behind is doing. */
+  --panel-bg: rgb(250 249 245 / 0.98);
+  --page-bg: var(--color-paper);
+  /* Width of the side drawer that holds the room's sections in the 3D view. */
+  --drawer-w: clamp(30rem, 40vw, 40rem);
 }
 
 :root:not([data-view="immersive"]) {
@@ -86,7 +90,7 @@
   }
 
   ::selection {
-    background: color-mix(in oklab, var(--color-primary) 22%, transparent);
+    background: color-mix(in oklab, var(--color-primary) 18%, transparent);
   }
 
   a {
@@ -100,12 +104,12 @@
   }
 }
 
-/* Two-color focus ring (navy outline + white gap) that shows on any background,
-   including the 3D scene. Unlayered so no utility can switch it off. */
+/* 2px maroon ring, 2px off the element (ring-2 ring-offset-2, drawn as an
+   outline so it survives forced-colors mode). Unlayered so no utility can
+   switch it off. */
 :focus-visible:not([tabindex="-1"]) {
-  outline: 3px solid var(--color-primary);
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
-  box-shadow: 0 0 0 2px #fff;
 }
 
 [tabindex="-1"]:focus {
@@ -120,22 +124,49 @@
     flex-direction: column;
     justify-content: center;
   }
-}
 
-@utility panel {
-  border: 1px solid var(--color-line);
-  border-radius: 1.5rem;
-  background: var(--panel-bg);
-  box-shadow: 0 12px 32px -16px rgb(31 42 51 / 0.28);
-  backdrop-filter: blur(14px) saturate(1.1);
+  /*
+   * A section's frame. On a sheet (the Traditional view, and the side drawer in
+   * the 3D view from lg up) sections are plain bands divided by hairlines. On
+   * small screens in the 3D view each one is its own 98% block, with the scene
+   * showing in the gaps.
+   */
+  .panel {
+    border: 1px solid var(--color-line);
+    background: var(--panel-bg);
+    padding: 1.5rem;
+  }
+  @media (min-width: 40rem) {
+    .panel {
+      padding: 2rem;
+    }
+  }
+  :root:not([data-view="immersive"]) .panel {
+    border: 0;
+    background: none;
+    padding: 2.5rem 0;
+  }
+  :root:not([data-view="immersive"]) .room-stop + .room-stop {
+    border-top: 1px solid var(--color-line);
+  }
+  @media (min-width: 64rem) {
+    :root[data-view="immersive"] .panel {
+      border: 0;
+      background: none;
+      padding: 2.5rem 0;
+    }
+    :root[data-view="immersive"] .room-stop + .room-stop {
+      border-top: 1px solid var(--color-line);
+    }
+  }
 }
 
 /* Diagonal hatching used for "planned" spend on the annual-max bar. */
 @utility bg-stripes {
   background-image: repeating-linear-gradient(
     -45deg,
-    rgb(255 255 255 / 0.35) 0 5px,
-    transparent 5px 10px
+    rgb(255 255 255 / 0.3) 0 3px,
+    transparent 3px 7px
   );
 }
 
