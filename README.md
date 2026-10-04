@@ -218,6 +218,13 @@ The rooms live in `frontend/src/components/3d/`, one file each: Entrance (storef
 - **Stations:** `STATIONS` in `DentalOffice.jsx` names the eight places the demo stops: the desk, chair, X-ray, terminal, calendar, coin jar, network doors and cork board.
 - **Preview one room:** `<RoomPreview Room={OperatoryRoom} stops={STOPS} />` from `roomKit.jsx`.
 
+## Claude Code skills
+
+`.claude/skills/` holds skills that Claude Code loads in every session on this repo.
+
+- **`design-taste-frontend`**: the "taste skill", frontend design rules for layout, type, color and motion. It is copied unchanged from [leonxlnx/taste-skill](https://github.com/leonxlnx/taste-skill) (`skills/taste-skill/SKILL.md` at commit `ce26fc2`, MIT, license alongside). To update it, copy that file again from upstream.
+- **This project's rules win where they disagree.** Those rules are WCAG 2.2 AA, the blue/mint/sage tokens in `frontend/src/index.css` (including the `#fbf8f1` surface), Inter, lucide icons, GSAP + React Three Fiber instead of Motion, reduced motion and the Traditional view. The skill is aimed at landing pages, so it fits the Entrance best. The room pages (forms, tables, the cost breakdown) follow the existing components.
+
 ## Backend contract (to build next)
 
 `POST /api/assistant/chat`, body `{ enrollmentId, message, toothNumber }`. It returns the `AssistantReply` shape from `src/lib/mockAssistant.ts`:
