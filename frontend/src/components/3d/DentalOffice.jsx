@@ -60,6 +60,9 @@ export const STATIONS = [
   { id: "jar",      room: "records",   section: "annual-max", focus: "jar",      label: "Annual Max Tracker", tag: "Bonus 1", feature: "Usage metrics" },
 ];
 
+/** Rooms the primary tabs open (PrimaryNav): kept warm so a tab click flies off at once. */
+const PRELOAD = ["operatory", "imaging", "providers"];
+
 /** The camera stop for each section id on a room's page; unknown ids reuse the previous stop. */
 function stopsFor(room, sectionIds) {
   const all = ROOMS[room]?.stops ?? [];
@@ -81,7 +84,7 @@ const BREATH_ORBIT = THREE.MathUtils.degToRad(1.5); // peak orbit while a sectio
 const BREATH_PAN = 0.05; // m, peak sideways drift while held
 const PULL_BACK = 0.14; // extra distance mid-glide between far-apart stops
 const PULL_BACK_LIFT = THREE.MathUtils.degToRad(4); // and a little extra height
-const LAMBDA = 2.6; // damping for THREE.MathUtils.damp (lower = softer follow)
+const LAMBDA = 3.2; // damping for THREE.MathUtils.damp (lower = softer follow)
 const LOOK_AHEAD = 0.9; // m along the fly-through path the camera looks toward
 const SWAP_FADE = 0.3; // m either side of the door swap over which the overlay fades in/out
 
@@ -190,7 +193,7 @@ function setNear(camera, near) {
  * Follows the stations while settled; runs the door fly-through when `move` is set.
  * Transition legs: approach (door opens 200 ms before arrival) → dwell → through → swap → enter.
  */
-function CameraRig({ stops, getProgress, reduced, move, hold, onDoorOpen, onSwap, onDone, fadeRef }) {
+function CameraRig({ stops, getProgress, reduced, move, onDoorOpen, onSwap, onDone, fadeRef }) {
   const camera = useThree((s) => s.camera);
   const size = useThree((s) => s.size);
   const look = useRef(new THREE.Vector3());
@@ -357,8 +360,7 @@ function CameraRig({ stops, getProgress, reduced, move, hold, onDoorOpen, onSwap
       return;
     }
 
-    // The next room is warming up: the page already belongs to it, so don't drift toward its stops.
-    if (hold || !path) return;
+    if (!path) return;
     stationPose(path, getProgress(), wantP, wantT);
     if (!ready.current || reduced) {
       ready.current = true;
@@ -376,11 +378,11 @@ function CameraRig({ stops, getProgress, reduced, move, hold, onDoorOpen, onSwap
 }
 
 /**
- * One room in the scene. The next room is mounted hidden before the camera moves: its shaders
- * are compiled and its textures uploaded right away, while the camera is still, so the swap in
- * the middle of the fly-through doesn't stall a frame. Then it reports ready and the move starts.
+ * One room in the scene. A room that mounts hidden (the one being flown to, or a tab's room
+ * preloaded while idle) compiles its shaders and uploads its textures at once, so the swap in
+ * the middle of a fly-through never stalls a frame.
  */
-function RoomSlot({ id, live, onWarm, children }) {
+function RoomSlot({ live, children }) {
   const ref = useRef(null);
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
@@ -410,8 +412,7 @@ function RoomSlot({ id, live, onWarm, children }) {
       group.visible = false;
       others.forEach((c) => (c.visible = true));
     }
-    onWarm(id);
-  }, [id, gl, scene, camera, onWarm]);
+  }, [gl, scene, camera]);
 
   return (
     <group ref={ref} visible={live} userData={{ roomSlot: true }}>
@@ -443,29 +444,40 @@ export default function DentalOffice({
   onStationChange,
 }) {
   const [shown, setShown] = useState(room);
-  // The room we're about to fly into: mounted hidden and warmed up first (see RoomSlot).
+  // The room being flown to, mounted hidden until the swap (see RoomSlot).
   const [pending, setPending] = useState(null);
+  // The primary tabs' rooms, mounted hidden while idle so clicking a tab has nothing to build.
+  const [preloaded, setPreloaded] = useState([]);
   const [openDoor, setOpenDoor] = useState(null);
   const [move, setMove] = useState(null);
   const moves = useRef(0);
-  const shownRef = useRef(shown);
-  shownRef.current = shown;
 
-  // A new route mounts the next room; once it is warm the fly-through starts. One more queued
-  // change runs when this one lands.
+  // A new route starts the fly-through at once; the next room mounts in the same render.
+  // One more queued change runs when this one lands.
   useEffect(() => {
-    if (move || pending || room === shown || !ROOMS[room]) return;
+    if (move || room === shown || !ROOMS[room]) return;
     if (!ROOMS[shown]) {
       setShown(room);
       return;
     }
-    setPending(room);
-  }, [room, shown, move, pending]);
-
-  const onWarm = useCallback((to) => {
     moves.current += 1;
-    setMove({ key: moves.current, from: shownRef.current, to });
-  }, []);
+    setPending(room);
+    setMove({ key: moves.current, from: shown, to: room });
+  }, [room, shown, move]);
+
+  // Once things are quiet, preload the tab rooms one at a time (one per idle slot, not all at once).
+  useEffect(() => {
+    if (move) return;
+    const next = PRELOAD.find((id) => ROOMS[id] && id !== shown && !preloaded.includes(id));
+    if (!next) return;
+    const add = () => setPreloaded((list) => (list.includes(next) ? list : [...list, next]));
+    if ("requestIdleCallback" in window) {
+      const handle = window.requestIdleCallback(add, { timeout: 3000 });
+      return () => window.cancelIdleCallback(handle);
+    }
+    const handle = window.setTimeout(add, 600);
+    return () => window.clearTimeout(handle);
+  }, [move, shown, preloaded]);
 
   const stops = useMemo(() => stopsFor(room, sections), [room, sections]);
   const focus = room === shown ? stops[Math.min(active, stops.length - 1)]?.focus : undefined;
@@ -489,8 +501,8 @@ export default function DentalOffice({
     setPending(null);
   }, []);
 
-  // Keyed by room id, so the warmed room is the same instance once it is shown: no remount at the swap.
-  const mounted = [shown, pending].filter((id, i, all) => id && ROOMS[id] && all.indexOf(id) === i);
+  // Keyed by room id, so a warmed room is the same instance once it is shown: no remount at the swap.
+  const mounted = [shown, pending, ...preloaded].filter((id, i, all) => id && ROOMS[id] && all.indexOf(id) === i);
   return (
     <Canvas
       shadows
@@ -506,7 +518,7 @@ export default function DentalOffice({
         const { Room } = ROOMS[id];
         const live = id === shown;
         return (
-          <RoomSlot key={id} id={id} live={live} onWarm={onWarm}>
+          <RoomSlot key={id} live={live}>
             <Room highlight={live ? focus : undefined} openDoor={live ? openDoor : null} jarFill={jarFill} />
           </RoomSlot>
         );
@@ -516,7 +528,6 @@ export default function DentalOffice({
         getProgress={getProgress}
         reduced={reducedMotion}
         move={move}
-        hold={pending !== null && !move}
         onDoorOpen={onDoorOpen}
         onSwap={onSwap}
         onDone={onDone}
