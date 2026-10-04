@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { Link } from 'react-router'
 import { useShallow } from 'zustand/react/shallow'
@@ -13,7 +13,7 @@ import type { AiAnalysis, CoverageClass } from '../../types/domain'
 import { CdtBadge, WaitingChip } from '../Chip'
 import ExploreProcedureForm, { type ExploreAnswers } from '../ExploreProcedureForm'
 import Panel from '../Panel'
-import { buttonQuiet, eyebrow, ledger, textLink } from '../ui'
+import { buttonPrimary, buttonQuiet, eyebrow, fieldInput, ledger, textLink } from '../ui'
 
 /** The CDT code each Explore-form choice most often means. */
 const CODE_FOR_EXPLORE: Record<string, string> = {
@@ -95,10 +95,58 @@ export default function TreatmentMap() {
         <ExploreProcedureForm onContinue={explore} busy={isThinking} />
         {reply && <ReplyBox text={reply} />}
         {analysis && <AnalysisCard analysis={analysis} />}
+        {reply && <FollowUpBox busy={isThinking} onAsk={(q) => void ask(q).then((r) => {
+          if (!r) return
+          setReply(r.content)
+          setAnalysis(r.analysis)
+          announce(r.content)
+        })} />}
       </Panel>
 
       <PlannedCare />
     </>
+  )
+}
+
+/**
+ * A free-text box so the user can answer a follow-up question (e.g. reply with a
+ * tooth number after a "which tooth?" prompt) or ask something else. Submits
+ * through the same analyzer path as the form.
+ */
+function FollowUpBox({ busy, onAsk }: { busy: boolean; onAsk: (question: string) => void }) {
+  const [value, setValue] = useState('')
+
+  function submit(event: FormEvent) {
+    event.preventDefault()
+    const q = value.trim()
+    if (!q) return
+    onAsk(q)
+    setValue('')
+  }
+
+  return (
+    <form onSubmit={submit} className="mt-5 space-y-2">
+      <label htmlFor="followup-input" className={eyebrow}>
+        Answer or ask a follow-up
+      </label>
+      <p id="followup-hint" className="text-sm text-ink-muted">
+        For example, reply with the tooth number (&ldquo;#14&rdquo;) or ask another question.
+      </p>
+      <div className="flex gap-2">
+        <input
+          id="followup-input"
+          type="text"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="Type your answer, e.g. “#14”"
+          aria-describedby="followup-hint"
+          className={`${fieldInput} flex-1`}
+        />
+        <button type="submit" disabled={busy || !value.trim()} className={buttonPrimary}>
+          {busy ? 'Sending…' : 'Send'}
+        </button>
+      </div>
+    </form>
   )
 }
 
