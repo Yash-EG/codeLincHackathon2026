@@ -2,14 +2,14 @@
 
 Codelinc Hackathon 2026. Describe the dental care you need in plain language, and Molarity:
 
-1. **Interprets it**: maps "crown on my back left molar" to CDT `D2740` on tooth #19.
+1. **Interprets it**: maps "root canal on tooth #14" to CDT `D3330` on tooth #14, and knows a crown has to follow.
 2. **Translates the plan jargon**: shows what insurance pays and what you pay, in and out of network.
 3. **Sequences the care**: spreads treatment across plan years so the annual maximum gets used and nothing expires unused.
 
 | Layer | Tech |
 | --- | --- |
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, React Router 7, Zustand |
-| 3D | Three.js via React Three Fiber v9 + drei, GSAP ScrollTrigger, N8AO (postprocessing) |
+| 3D | Three.js via React Three Fiber v9 + drei (procedural room kit, no model files), GSAP ScrollTrigger |
 | Backend | Java 21 / Spring Boot 3.5 (`backend/`, see below) |
 | Database | Neon (serverless Postgres) |
 | AI | Amazon Bedrock |
@@ -32,7 +32,7 @@ The site is a dental office you walk through, one route per room. **The HTML is 
 Every room shares a persistent shell: a skip link, a header with the **Directory** and the view toggle, an always-visible **annual max bar**, and **Ask AI** (a native modal `<dialog>`).
 
 **Two views of the same pages:**
-- **3D office (immersive):** text sits on frosted panels (at least 88% opaque, so contrast holds over any scene), and the camera glides between keyframes as you scroll.
+- **3D office (immersive):** text sits on frosted panels (at least 88% opaque, so contrast holds over any scene). As you scroll, the camera holds on the object each section is about, then glides to the next one. Changing room flies the camera through a door.
 - **Traditional:** the 3D code is never downloaded, and panels are solid with no motion. This view turns on automatically when the OS asks for reduced motion or WebGL is unavailable. Either view can be picked in the header.
 
 **Accessibility target:** WCAG 2.2 AA. The skip link, one `<h1>` per room, and focus moving to that `<h1>` on room change are built in. Arrivals are announced in a polite live region. Focus rings use two colors. `scroll-padding` keeps the fixed bars from covering focused content. Errors are linked to their form fields. The tooth map is plain buttons.
@@ -50,25 +50,24 @@ frontend/src/
   routes/                   room pages: real, accessible content
   components/layout/        AppShell, Header, Directory, ViewToggle, MaxBar, AskAiDialog, SkipLink, LiveRegion
   components/               Panel, RoomIntro, DoorCard, ToothPicker, CheckInForm, AnnualMaxProgress, ...
-  scenes/                   the background 3D office (lazy chunk)
-    common/SceneRoot.tsx    one persistent <Canvas> at z-index -1, swaps the room scene per route
-    common/CameraRig.tsx    damped camera along a curve through the room's keyframes
-    common/useScrollKeyframes.ts  ScrollTrigger per [data-camera] section -> camera progress
-    common/textures.ts      procedural textures (oak, plaster, fabric, cork, metal, ...) + normal maps
-    common/materials.ts     shared materials built on those textures
-    common/Lighting.tsx  Effects.tsx
-    kit/                    RoomShell (cutaway room), doors, windows, furniture, plants
-    rooms/<Room>Scene.tsx   one scene per room
-    rooms/keyframes.ts      camera stops per room, keyed by section id
+  components/panels/        the four main panels: PlanInput, TreatmentMap, CostBreakdown, Timeline
+  components/3d/            the background 3D office (lazy chunk)
+    SceneRoot.tsx           aria-hidden wrapper at z-index -1: canvas + fade overlay, reads the scene store
+    useScrollStops.ts       ScrollTrigger per [data-camera] section -> scroll progress
+    DentalOffice.jsx        mounts one room at a time, camera rig, door fly-throughs, STATIONS
+    roomKit.jsx             procedural textures, materials, room shell, doors, furniture, lights
+    <Name>Room.jsx          one room each; exports STOPS (camera per section) and DOORS
   store/
-    sessionStore.ts         plan, benefits, procedures, chat (sessionStorage only)
-    selectors.ts            line items, totals, annual max (derived, never stored)
+    sessionStore.ts         plan, benefits, procedures, next-year care, AI analysis, chat (sessionStorage only)
+    useDentalStore.ts       the brief's store API (annualMax, used, pending, ...) over the session store
+    selectors.ts            line items, totals, annual max, next-year plan (derived, never stored)
     settingsStore.ts        view mode (localStorage)
     uiStore.ts  sceneStore.ts
   a11y/                     route focus, reduced motion, WebGL check, fixed-bar height vars
   lib/estimate.ts           coinsurance / deductible / annual-max estimator
+  lib/sequencing.ts         this year vs. after Jan 1: what splitting care across the reset saves
   lib/mockAssistant.ts      offline stand-in for the Bedrock endpoint
-  data/mockData.ts          demo user data that mirrors the SQL seed
+  data/mockData.ts          the demo plan (Lincoln Preferred PPO: $1,500 max, $400 used)
 ```
 
 Theme colors are tokens in `src/index.css` (`@theme`; Tailwind v4 has no `tailwind.config.js`). The palette is blue, mint and sage, and each text pair's contrast ratio is noted next to it.
@@ -210,12 +209,14 @@ still works regardless.
 
 ## The 3D office
 
-Each route has its own scene in `frontend/src/scenes/rooms/`: Entrance (storefront), Reception, Hallway, Operatory, Imaging, Consult office, Billing and Records. They follow the reference renders: cutaway 5.5 m rooms on a white base, light oak floors, cream-over-sage walls with a maroon and orange rail, white doors with frosted glass, plants, art and clocks.
+The rooms live in `frontend/src/components/3d/`, one file each: Entrance (storefront), Reception, Hallway, Operatory, Imaging, Consult office, Billing and Records. Each is a 6 × 5 × 3 m cutaway room built from `roomKit.jsx`. They have light oak floors, mint and sage walls with a maroon and orange rail, white doors with frosted glass, plants, art and clocks.
 
-- **Textures are drawn in code** (`scenes/common/textures.ts`): oak planks, plaster, terrazzo, tile, fabric, vinyl, cork, brushed metal, quartz, concrete and grass, each with a normal map so grain and seams catch the light. Nothing is downloaded and everything works offline. Signs, screens, the calendar and art are drawn the same way.
-- **Furniture and fixtures** come from `scenes/kit/`, built from rounded boxes in meters. Wall items mount at `-FACE` on the back wall, or on the left wall with `rotY={ON_LEFT}`.
-- **Camera stops** live in `scenes/rooms/keyframes.ts`, keyed by the `id` of each `<Panel>` on the page.
-- **Real models later:** load a `.glb` with `useGLTF` inside a room's scene file. Nothing else needs to change.
+- **Nothing is downloaded.** Textures (oak, plaster, fabric, leather, brushed metal, cork, concrete, grass, signs, screens) are drawn on canvases in code, with bump and roughness maps. Porcelain, lamp shades and the tooth models use a clearcoat finish, and chrome uses brushed roughness. Contact shadows sit under the furniture.
+- **`STOPS`:** each room lists one camera stop per page section, keyed by the `id` of the `<Panel>`, with the object to highlight. `view(target, distance, azimuth, elevation)` frames an object tightly. The lens is narrow (24°), and on wide screens the picture shifts right so the object sits beside the text.
+- **Scroll:** the camera holds on a section's object for the first 70% of the section, with a slow orbit of up to 5°. It then glides to the next stop. Every move is damped (`THREE.MathUtils.damp`).
+- **`DOORS`:** each room lists its doors (`wall`, `u`, plaque). On a route change the camera flies to the door to the next room. The door starts opening 200 ms before the camera gets there, and the camera passes through the doorway with a 0.01 near plane. It then comes in through the matching door of the next room, which closes behind it. With reduced motion this is a short cross-fade.
+- **Stations:** `STATIONS` in `DentalOffice.jsx` names the eight places the demo stops: the desk, chair, X-ray, terminal, calendar, coin jar, network doors and cork board.
+- **Preview one room:** `<RoomPreview Room={OperatoryRoom} stops={STOPS} />` from `roomKit.jsx`.
 
 ## Backend contract (to build next)
 
@@ -224,15 +225,17 @@ Each route has its own scene in `frontend/src/scenes/rooms/`: Entrance (storefro
 - `content`: the plain-English answer.
 - `requests`: the CDT codes plus tooth numbers.
 - `lineItems`: the priced estimates.
+- `deferred`: care to book after the maximum resets (e.g. the crown after a root canal).
+- `analysis`: the `AiAnalysis` card: `simplifiedExplanation`, `estimatedCost`, `inNetworkCost`, `outOfNetworkCost` and `suggestedSequence`.
 
 Under the hood, Bedrock maps the free text to CDT codes using `cdt_procedures.common_aliases`. The service then prices the codes from `v_plan_procedure_coverage` and checks them against `v_enrollment_benefit_summary`.
 
 ## Demo script
 
-1. **Entrance → Walk in → Reception.** Choose **Use the sample plan**. The max bar now shows Maya's 2026 maximum: used, pending and left.
-2. **Operatory.** Pick **tooth #3** and choose **Crown**. The plan goes over the maximum, and the assistant suggests moving part of the work past Jan 1.
-3. **Billing.** See what you pay. Switch to **Out-of-network** to compare.
-4. **Consult office.** See what to do before Dec 31 and what waits for the new plan year.
-5. **Records.** See the annual maximum and claims, then **Add to my calendar (.ics)**.
+1. **Entrance → Walk in → Reception.** Choose **Use the sample plan**: Maya's Lincoln Preferred PPO. The max bar shows $400 of $1,500 used.
+2. **Operatory.** "Root canal on tooth #14" is already typed in, so choose **Price it**. The root canal costs you $232 in-network. The assistant adds the crown the tooth needs afterwards and books it for Jan 12: **"Do step 1 now and step 2 after Jan 1 to save $315."**
+3. **Billing.** See what you pay, and that the $50 deductible isn't met yet. Switch to **Out-of-network** to compare.
+4. **Consult office.** The timeline puts the root canal before Dec 31 and the crown after Jan 1. The table shows $1,284 if you do both this year, against $969 split.
+5. **Records.** See the annual maximum (the coin jar in 3D) and claims, then **Add to my calendar (.ics)**.
 6. **Ask AI** (bottom right in every room): *"Can I get another cleaning this year?"*
 7. Switch the header to **Traditional** to show the same pages with no 3D.

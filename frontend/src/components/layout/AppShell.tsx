@@ -12,7 +12,7 @@ import MaxBar from './MaxBar'
 import SkipLink from './SkipLink'
 
 // The 3D layer (three.js, R3F, GSAP) is its own chunk: traditional view never downloads it.
-const SceneRoot = lazy(() => import('../../scenes/common/SceneRoot'))
+const SceneRoot = lazy(() => import('../3d/SceneRoot'))
 
 /**
  * The persistent layout around every room. The DOM is the real site; the 3D

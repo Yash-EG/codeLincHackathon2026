@@ -11,17 +11,32 @@
 // from v_plan_procedure_coverage and returns the same AssistantReply shape.
 
 import { findTooth, getTooth, type Arch, type Side, type ToothInfo } from '../data/teeth'
-import type { BenefitClaim, CdtProcedure, CostLineItem, ProcedureRequest } from '../types/domain'
+import type {
+  AiAnalysis,
+  BenefitClaim,
+  CdtProcedure,
+  CostLineItem,
+  ProcedureRequest,
+  SequenceStep,
+  TreatmentPlanItem,
+} from '../types/domain'
 import { COVERAGE_LABEL, totalsFor } from './estimate'
-import { formatLongDate, formatShortDate, formatUsd } from './format'
+import { formatLongDate, formatShortDate, formatUsd, roundCents } from './format'
 import { nextId } from './id'
+import { earlyNextYear, type TimingComparison } from './sequencing'
 
 export interface AssistantContext {
   procedures: Record<string, CdtProcedure>
   /** Prices new requests as if appended after the current plan (deductible + maximum carry over). */
   estimate: (requests: ProcedureRequest[]) => CostLineItem[]
+  /** Prices requests in the next plan year, after the care already moved there. */
+  estimateNextYear: (requests: ProcedureRequest[]) => CostLineItem[]
+  /** Prices `later` straight after `now` this year versus after Jan 1 (both after the current plan). */
+  compare: (now: ProcedureRequest[], later: ProcedureRequest[]) => TimingComparison
   /** Procedures already in the plan (used to avoid duplicates). */
   planned: ProcedureRequest[]
+  /** Care already moved into the next plan year. */
+  deferred: TreatmentPlanItem[]
   /** This plan year's claims (used for frequency limits). */
   claims: BenefitClaim[]
   planName: string
@@ -35,9 +50,25 @@ export interface AssistantContext {
 
 export interface AssistantReply {
   content: string
+  /** Care to add to this plan year. */
   requests: ProcedureRequest[]
   lineItems: CostLineItem[]
+  /** Care to book after the maximum resets. */
+  deferred: TreatmentPlanItem[]
+  analysis: AiAnalysis | null
 }
+
+/** Care that usually has to follow another procedure on the same tooth. */
+const FOLLOW_UPS: Record<string, { cdtCode: string; noun: string; why: string }> = {
+  D3330: {
+    cdtCode: 'D2740',
+    noun: 'crown',
+    why: 'A back tooth turns brittle after a root canal, so it needs a crown to keep it from cracking.',
+  },
+}
+
+/** A reply that prices nothing. */
+const say = (content: string): AssistantReply => ({ content, requests: [], lineItems: [], deferred: [], analysis: null })
 
 interface Intent {
   pattern: RegExp
@@ -101,6 +132,9 @@ function resolveTooth(text: string, selectedTooth: number | null): ToothInfo | u
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+const patientPays = (items: CostLineItem[], network: 'IN_NETWORK' | 'OUT_OF_NETWORK' = 'IN_NETWORK') =>
+  totalsFor(items, network).patientPays
+
 export async function sendAssistantMessage(
   message: string,
   selectedTooth: number | null,
@@ -117,56 +151,47 @@ export async function sendAssistantMessage(
     )
   ) {
     const leftover = Math.max(ctx.remainingBeforePlan - ctx.plannedPlanPays, 0)
-    return {
-      content:
-        `You have ${formatUsd(ctx.remainingBeforePlan)} of your ${ctx.planName} maximum left, and it resets on ` +
+    return say(
+      `You have ${formatUsd(ctx.remainingBeforePlan)} of your ${ctx.planName} maximum left, and it resets on ` +
         `${formatLongDate(ctx.planYearEnd)} (${ctx.daysRemaining} days). Your current plan uses ` +
         `${formatUsd(ctx.plannedPlanPays)} of it, so ${formatUsd(leftover)} would still go unused. ` +
         `Preventive visits don't touch your deductible, and Basic work like fillings is covered at 80%. ` +
         `Both are good ways to use what's left.`,
-      requests: [],
-      lineItems: [],
-    }
+    )
   }
 
   if (!intent) {
-    return {
-      content:
-        "I couldn't match that to a procedure yet. Try describing it the way your dentist did, e.g. " +
-        '"crown on my lower left molar", "two-surface filling on #30", "root canal" or "cleaning". ' +
-        'You can also click a tooth on the model first.',
-      requests: [],
-      lineItems: [],
-    }
+    return say(
+      "I couldn't match that to a procedure yet. Try describing it the way your dentist did, e.g. " +
+        '"root canal on tooth #14", "crown on my lower left molar" or "cleaning". ' +
+        'You can also pick a tooth on the tooth map first.',
+    )
   }
 
   const tooth = resolveTooth(text, selectedTooth)
   const codes = intent.codes(tooth, text)
   if (!codes) {
-    return {
-      content: `${intent.label} is billed per tooth. Which tooth is it? Click it on the 3D model, or say something like "lower left molar" or "#19".`,
-      requests: [],
-      lineItems: [],
-    }
+    return say(
+      `${intent.label} is billed per tooth. Which tooth is it? Pick it on the tooth map, or say something like "lower left molar" or "#14".`,
+    )
   }
 
   const year = ctx.planYearEnd.slice(0, 4)
+  const nextYear = Number(year) + 1
   const requests: ProcedureRequest[] = codes.map((cdtCode) => ({
     id: nextId('req'),
     cdtCode,
     toothNumber: ctx.procedures[cdtCode]?.isToothSpecific ? (tooth?.number ?? null) : null,
   }))
 
-  const alreadyPlanned = requests.every((r) =>
-    ctx.planned.some((p) => p.cdtCode === r.cdtCode && p.toothNumber === r.toothNumber),
-  )
-  if (alreadyPlanned) {
+  const isPlanned = (r: { cdtCode: string; toothNumber: number | null }) =>
+    ctx.planned.some((p) => p.cdtCode === r.cdtCode && p.toothNumber === r.toothNumber) ||
+    ctx.deferred.some((d) => d.cdtCode === r.cdtCode && d.toothNumber === r.toothNumber)
+  if (requests.every(isPlanned)) {
     const names = requests.map((r) => ctx.procedures[r.cdtCode]?.shortName ?? r.cdtCode).join(' + ')
-    return {
-      content: `${names}${tooth && requests[0].toothNumber ? ` on #${tooth.number}` : ''} is already in your plan. Open the cost breakdown to see its estimate.`,
-      requests: [],
-      lineItems: [],
-    }
+    return say(
+      `${names}${tooth && requests[0].toothNumber ? ` on #${tooth.number}` : ''} is already in your plan. Open the cost breakdown to see its estimate.`,
+    )
   }
 
   // Frequency limits (e.g. 2 cleanings per benefit year): steer it into next year.
@@ -179,48 +204,118 @@ export async function sendAssistantMessage(
       const noun = procedure.shortName.toLowerCase() + (used.length > 1 ? 's' : '')
       const dates = used.map((c) => formatShortDate(c.serviceDate)).join(' and ')
       const rate = procedure.coverageClass === 'PREVENTIVE' ? '100%' : 'your normal rate'
-      return {
-        content:
-          `You've used ${howMany} ${year} ${noun} (${dates}), so ${ctx.planName} won't pay for another this year. ` +
+      return say(
+        `You've used ${howMany} ${year} ${noun} (${dates}), so ${ctx.planName} won't pay for another this year. ` +
           `Book it for early January: it's covered at ${rate} once your benefits reset, instead of the full ` +
           `${formatUsd(procedure.inNetworkFee)} now.`,
-        requests: [],
-        lineItems: [],
-      }
+      )
     }
   }
 
-  const lineItems = ctx.estimate(requests)
-  if (lineItems.length === 0) {
-    return { content: "That procedure isn't in your plan's fee schedule yet.", requests: [], lineItems: [] }
-  }
+  // Care that has to follow (a crown after a molar root canal): this year, or after the reset if that's cheaper.
+  const followUps: Array<{ request: ProcedureRequest; noun: string; why: string }> = requests.flatMap((r) => {
+    const rule = FOLLOW_UPS[r.cdtCode]
+    if (!rule || r.toothNumber == null || isPlanned({ cdtCode: rule.cdtCode, toothNumber: r.toothNumber })) return []
+    return [{ request: { id: nextId('req'), cdtCode: rule.cdtCode, toothNumber: r.toothNumber }, noun: rule.noun, why: rule.why }]
+  })
+  const timing = followUps.length > 0 ? ctx.compare(requests, followUps.map((f) => f.request)) : null
+  const defer = timing != null && timing.savings > 0
+  const bookOn = earlyNextYear(ctx.planYearEnd)
+  const thisYear = defer ? requests : [...requests, ...followUps.map((f) => f.request)]
+
+  const lineItems = ctx.estimate(thisYear)
+  if (lineItems.length === 0) return say("That procedure isn't in your plan's fee schedule yet.")
+  const laterItems = defer ? ctx.estimateNextYear(followUps.map((f) => f.request)) : []
+
+  const deferred: TreatmentPlanItem[] = laterItems.map((li, i) => ({
+    id: li.request.id,
+    cdtCode: li.request.cdtCode,
+    toothNumber: li.request.toothNumber,
+    surfaces: null,
+    status: 'PROPOSED',
+    urgency: 'SOON',
+    recommendedDate: bookOn,
+    sequenceOrder: lineItems.length + i + 1,
+    aiRationale:
+      `${followUps[i].why} Booked after Jan 1, a fresh ${nextYear} maximum pays ` +
+      `${formatUsd(li.byNetwork.IN_NETWORK.planPays)} of it` +
+      (timing ? `, ${formatUsd(timing.savings)} more than what is left of your ${year} maximum would.` : '.'),
+  }))
 
   const inNet = totalsFor(lineItems, 'IN_NETWORK')
   const outNet = totalsFor(lineItems, 'OUT_OF_NETWORK')
   const first = lineItems[0]
   const where = tooth && first.request.toothNumber ? ` on #${tooth.number} (${tooth.name.toLowerCase()})` : ''
+  const described = requests.length
   const deductibleNote = lineItems.some((li) => li.byNetwork.IN_NETWORK.deductibleApplied > 0)
     ? ' after the rest of your deductible'
     : ''
   const coverage =
-    lineItems.length === 1
+    described === 1
       ? `is a ${COVERAGE_LABEL[first.procedure.coverageClass]} service on ${ctx.planName}, so insurance pays ${first.planPaysPct.IN_NETWORK}%${deductibleNote}.`
-      : `is billed as ${lineItems.length} codes on ${ctx.planName}: ` +
+      : `is billed as ${described} codes on ${ctx.planName}: ` +
         lineItems
+          .slice(0, described)
           .map((li) => `${li.procedure.shortName} (${COVERAGE_LABEL[li.procedure.coverageClass]}, ${li.planPaysPct.IN_NETWORK}%)`)
           .join(' and ') +
         `${deductibleNote}.`
   const remainingAfter = Math.max(ctx.remainingBeforePlan - ctx.plannedPlanPays - inNet.planPays, 0)
 
+  const nameOf = (li: CostLineItem) =>
+    `${li.procedure.shortName}${li.request.toothNumber != null ? ` on tooth #${li.request.toothNumber}` : ''}`
+  const steps: SequenceStep[] = [
+    ...lineItems.map((li, i) => ({
+      step: i + 1,
+      label: nameOf(li),
+      timing: 'this-year' as const,
+      youPay: li.byNetwork.IN_NETWORK.patientPays,
+      reason:
+        i < described
+          ? `Do it now: ${li.procedure.plainDescription.charAt(0).toLowerCase()}${li.procedure.plainDescription.slice(1)}`
+          : (followUps.find((f) => f.request.id === li.request.id)?.why ?? ''),
+    })),
+    ...laterItems.map((li, i) => ({
+      step: lineItems.length + i + 1,
+      label: nameOf(li),
+      timing: 'next-year' as const,
+      date: bookOn,
+      youPay: li.byNetwork.IN_NETWORK.patientPays,
+      reason: deferred[i].aiRationale,
+    })),
+  ]
+  const analysis: AiAnalysis = {
+    simplifiedExplanation: [...lineItems, ...laterItems]
+      .map((li) => `${li.procedure.shortName}: ${li.procedure.plainDescription}`)
+      .join(' '),
+    estimatedCost: roundCents(inNet.fee + laterItems.reduce((sum, li) => sum + li.byNetwork.IN_NETWORK.fee, 0)),
+    inNetworkCost: roundCents(inNet.patientPays + patientPays(laterItems)),
+    outOfNetworkCost: roundCents(outNet.patientPays + patientPays(laterItems, 'OUT_OF_NETWORK')),
+    suggestedSequence: steps,
+    savings: defer && timing ? timing.savings : 0,
+  }
+
   const parts = [
     `${intent.label}${where} ${coverage}`,
     `In-network estimate: ${formatUsd(inNet.fee)} total. Insurance pays ${formatUsd(inNet.planPays)} and you pay ${formatUsd(inNet.patientPays)}.`,
     `Out-of-network you'd pay about ${formatUsd(outNet.patientPays)} (${formatUsd(outNet.patientPays - inNet.patientPays)} more).`,
-    inNet.overMaximum > 0
-      ? `Heads up: ${formatUsd(inNet.overMaximum)} of this is more than your ${year} maximum can cover. Moving part of the work past Jan 1 would put a fresh maximum to work.`
-      : `That leaves ${formatUsd(remainingAfter)} of your ${year} maximum.`,
-    'I added it to your cost breakdown.',
   ]
+  if (defer && timing) {
+    const later = followUps.map((f) => f.noun).join(' and ')
+    parts.push(
+      `${followUps[0].why} Do step 1 now and step ${steps.length} (the ${later}) after Jan 1 to save ${formatUsd(timing.savings)}: ` +
+        `your ${nextYear} maximum starts fresh and pays ${formatUsd(totalsFor(laterItems, 'IN_NETWORK').planPays)} of it.`,
+      `I added step 1 to this year's cost breakdown and booked step ${steps.length} for ${formatShortDate(bookOn)}, ${nextYear}.`,
+    )
+  } else {
+    parts.push(
+      inNet.overMaximum > 0
+        ? `Heads up: ${formatUsd(inNet.overMaximum)} of this is more than your ${year} maximum can cover. Moving part of the work past Jan 1 would put a fresh maximum to work.`
+        : `That leaves ${formatUsd(remainingAfter)} of your ${year} maximum.`,
+      followUps.length > 0
+        ? `${followUps[0].why} It fits this year, so I added it to your cost breakdown too.`
+        : 'I added it to your cost breakdown.',
+    )
+  }
 
-  return { content: parts.join(' '), requests, lineItems }
+  return { content: parts.join(' '), requests: thisYear, lineItems, deferred, analysis }
 }

@@ -1,6 +1,10 @@
-// Mock data for the demo user (Maya Chen / Premier PPO). Values match
-// db/migrations/V2__seed_mock_data.sql so swapping to the real API is a
-// drop-in change: replace these exports with fetches to the Spring Boot backend.
+// Mock data for the demo user (Maya Chen / Lincoln Preferred PPO): the
+// challenge's walkthrough numbers. $1,500 maximum, $400 used, deductible not
+// met, and a root canal on tooth #14 that needs a crown afterwards, which is
+// $315 cheaper with the crown after Jan 1 (see lib/sequencing.ts).
+// The shapes match the Neon schema; the values are tuned for the demo and are
+// not the db/migrations seed. Replace these exports with fetches to the Spring
+// Boot backend when it is ready.
 
 import type {
   BenefitClaim,
@@ -10,22 +14,21 @@ import type {
   CoverageTier,
   InsurancePlan,
   JargonTranslation,
-  TreatmentPlanItem,
 } from '../types/domain'
 import { daysUntil } from '../lib/format'
 
 export const PLAN: InsurancePlan = {
   id: '22222222-2222-4222-8222-000000000002',
   carrierName: 'Ivorycrest Mutual',
-  planName: 'Premier PPO',
+  planName: 'Lincoln Preferred PPO',
   planType: 'PPO',
-  annualMaximum: 2000,
+  annualMaximum: 1500,
   deductibleIndividualIn: 50,
   deductibleIndividualOut: 100,
-  rolloverEnabled: true,
+  rolloverEnabled: false,
   oonAllowedRatio: 0.8,
   summaryOfBenefits:
-    'The Annual Benefit Maximum of $2,000 per Covered Person applies to all Classes of service combined, in- and out-of-network. Under the Maximum Rollover provision, if paid claims during the Benefit Period do not exceed the Threshold of $1,000, $500 is credited to the Rollover Account, not to exceed the Rollover Account Limit of $1,250. Endodontic services are reimbursed under Class II (Basic) Coinsurance. Out-of-network claims are adjudicated at the 80th percentile of Usual, Customary and Reasonable (UCR) charges; Member is responsible for any balance billing. Crowns, inlays, onlays and fixed prosthetics are limited to one (1) per tooth per sixty (60) months. Unused benefits, including the Annual Maximum, do not carry forward except as provided under the Maximum Rollover provision.',
+    'The Annual Benefit Maximum of $1,500 per Covered Person applies to all Classes of service combined, in- and out-of-network, and renews on January 1 of each Benefit Period. A Calendar Year Deductible of $50 per Covered Person ($100 out-of-network) applies to Class II (Basic) and Class III (Major) services. Endodontic services are reimbursed under Class II (Basic) Coinsurance. Out-of-network claims are adjudicated at the 80th percentile of Usual, Customary and Reasonable (UCR) charges; Member is responsible for any balance billing. Crowns, inlays, onlays and fixed prosthetics are limited to one (1) per tooth per sixty (60) months. Unused benefits, including the Annual Maximum, do not carry forward to any subsequent Benefit Period.',
 }
 
 export const COVERAGE_TIERS: Record<CoverageClass, CoverageTier> = {
@@ -35,16 +38,16 @@ export const COVERAGE_TIERS: Record<CoverageClass, CoverageTier> = {
   ORTHODONTIC: { coverageClass: 'ORTHODONTIC', planPaysPctInNetwork: 50, planPaysPctOutNetwork: 50, deductibleApplies: false, waitingPeriodMonths: 0 },
 }
 
-/** v_plan_procedure_coverage rows for Premier PPO, NATIONAL fee region. */
+/** v_plan_procedure_coverage rows for Lincoln Preferred PPO, NATIONAL fee region. */
 const PROCEDURE_LIST: CdtProcedure[] = [
   { cdtCode: 'D0120', shortName: 'Periodic oral evaluation', plainDescription: 'Routine check-up exam for an existing patient.', coverageClass: 'PREVENTIVE', isCovered: true, isToothSpecific: false, frequencyPerYear: 2, inNetworkFee: 52, ucrFee: 75 },
   { cdtCode: 'D0140', shortName: 'Limited oral evaluation', plainDescription: 'A focused exam for one problem, like a toothache or chipped tooth.', coverageClass: 'PREVENTIVE', isCovered: true, isToothSpecific: false, inNetworkFee: 72, ucrFee: 105 },
-  { cdtCode: 'D0274', shortName: 'Bitewing X-rays (4 films)', plainDescription: 'X-rays that look for cavities between the back teeth.', coverageClass: 'PREVENTIVE', isCovered: true, isToothSpecific: false, frequencyPerYear: 1, inNetworkFee: 58, ucrFee: 85 },
+  { cdtCode: 'D0274', shortName: 'Bitewing X-rays (4 films)', plainDescription: 'X-rays that look for cavities between the back teeth.', coverageClass: 'PREVENTIVE', isCovered: true, isToothSpecific: false, frequencyPerYear: 1, inNetworkFee: 48, ucrFee: 70 },
   { cdtCode: 'D1110', shortName: 'Adult cleaning', plainDescription: 'Routine professional teeth cleaning (prophylaxis).', coverageClass: 'PREVENTIVE', isCovered: true, isToothSpecific: false, frequencyPerYear: 2, inNetworkFee: 88, ucrFee: 125 },
   { cdtCode: 'D2330', shortName: 'Composite filling, 1 surface (front)', plainDescription: 'A tooth-colored filling on one side of a front tooth.', coverageClass: 'BASIC', isCovered: true, isToothSpecific: true, inNetworkFee: 120, ucrFee: 180 },
   { cdtCode: 'D2391', shortName: 'Composite filling, 1 surface (back)', plainDescription: 'A tooth-colored filling on one side of a back tooth.', coverageClass: 'BASIC', isCovered: true, isToothSpecific: true, inNetworkFee: 135, ucrFee: 205 },
   { cdtCode: 'D2392', shortName: 'Composite filling, 2 surfaces (back)', plainDescription: 'A tooth-colored filling covering two sides of a back tooth.', coverageClass: 'BASIC', isCovered: true, isToothSpecific: true, inNetworkFee: 170, ucrFee: 255 },
-  { cdtCode: 'D2740', shortName: 'Crown, porcelain/ceramic', plainDescription: 'A full tooth-colored cap that covers and protects a damaged tooth.', coverageClass: 'MAJOR', isCovered: true, isToothSpecific: true, inNetworkFee: 925, ucrFee: 1375 },
+  { cdtCode: 'D2740', shortName: 'Crown, porcelain/ceramic', plainDescription: 'A full tooth-colored cap that covers and protects a damaged tooth.', coverageClass: 'MAJOR', isCovered: true, isToothSpecific: true, inNetworkFee: 1424, ucrFee: 2050 },
   { cdtCode: 'D2950', shortName: 'Core buildup', plainDescription: 'Rebuilds the inside of a broken-down tooth so a crown can hold on.', coverageClass: 'MAJOR', isCovered: true, isToothSpecific: true, inNetworkFee: 205, ucrFee: 310 },
   { cdtCode: 'D3310', shortName: 'Root canal, front tooth', plainDescription: 'Removes infected nerve tissue from inside a front tooth.', coverageClass: 'BASIC', isCovered: true, isToothSpecific: true, inNetworkFee: 660, ucrFee: 925 },
   { cdtCode: 'D3330', shortName: 'Root canal, molar', plainDescription: 'Removes infected nerve tissue from inside a back molar.', coverageClass: 'BASIC', isCovered: true, isToothSpecific: true, inNetworkFee: 960, ucrFee: 1325 },
@@ -60,29 +63,22 @@ export const PROCEDURES: Record<string, CdtProcedure> = Object.fromEntries(
   PROCEDURE_LIST.map((p) => [p.cdtCode, p]),
 )
 
-/** benefit_claims for Maya's 2026 enrollment. */
+/** benefit_claims for Maya's 2026 enrollment: two check-ups and a toothache exam, $400 in all. */
 export const CLAIMS: BenefitClaim[] = [
   { cdtCode: 'D0120', toothNumber: null, serviceDate: '2026-02-10', planPaid: 52, patientPaid: 0 },
   { cdtCode: 'D1110', toothNumber: null, serviceDate: '2026-02-10', planPaid: 88, patientPaid: 0 },
-  { cdtCode: 'D0274', toothNumber: null, serviceDate: '2026-02-10', planPaid: 58, patientPaid: 0 },
-  { cdtCode: 'D0140', toothNumber: 19, serviceDate: '2026-05-06', planPaid: 72, patientPaid: 0 },
-  { cdtCode: 'D3330', toothNumber: 19, serviceDate: '2026-05-14', planPaid: 728, patientPaid: 232 },
-  { cdtCode: 'D2391', toothNumber: 3, serviceDate: '2026-06-03', planPaid: 108, patientPaid: 27 },
+  { cdtCode: 'D0274', toothNumber: null, serviceDate: '2026-02-10', planPaid: 48, patientPaid: 0 },
   { cdtCode: 'D0120', toothNumber: null, serviceDate: '2026-08-20', planPaid: 52, patientPaid: 0 },
   { cdtCode: 'D1110', toothNumber: null, serviceDate: '2026-08-20', planPaid: 88, patientPaid: 0 },
+  { cdtCode: 'D0140', toothNumber: 14, serviceDate: '2026-09-28', planPaid: 72, patientPaid: 0 },
 ]
 
-/** treatment_plan_items: the AI-sequenced plan generated so far. */
-export const TREATMENT_PLAN: TreatmentPlanItem[] = [
-  { id: 'tp-1', cdtCode: 'D2950', toothNumber: 19, surfaces: null, status: 'PROPOSED', urgency: 'SOON', recommendedDate: '2026-11-12', sequenceOrder: 1, aiRationale: 'Tooth #19 had a root canal in May and needs a buildup before the crown.' },
-  { id: 'tp-2', cdtCode: 'D2740', toothNumber: 19, surfaces: null, status: 'PROPOSED', urgency: 'SOON', recommendedDate: '2026-11-12', sequenceOrder: 2, aiRationale: 'Root-canal-treated molars can fracture without a crown. Doing it before Dec 31 uses 2026 dollars.' },
-  { id: 'tp-3', cdtCode: 'D2392', toothNumber: 30, surfaces: 'MO', status: 'PROPOSED', urgency: 'SOON', recommendedDate: '2026-12-08', sequenceOrder: 3, aiRationale: 'A two-surface filling is Basic (80%) and still fits under the 2026 maximum after the crown.' },
-  { id: 'tp-4', cdtCode: 'D1110', toothNumber: null, surfaces: null, status: 'PROPOSED', urgency: 'ELECTIVE', recommendedDate: '2027-02-15', sequenceOrder: 4, aiRationale: 'Both 2026 cleanings are used. The next one is free once the 2027 benefit period starts.' },
-]
+/** What the demo user types in the Operatory: the procedure their dentist recommended. */
+export const SAMPLE_PROCEDURE_INPUT = 'Root canal on tooth #14'
 
-const usedToDate = CLAIMS.reduce((sum, c) => sum + c.planPaid, 0) // 1246
+const usedToDate = CLAIMS.reduce((sum, c) => sum + c.planPaid, 0) // 400
 const planYearEnd = '2026-12-31'
-const effectiveMaximum = PLAN.annualMaximum + 250
+const effectiveMaximum = PLAN.annualMaximum
 const daysRemaining = daysUntil(planYearEnd)
 
 /** v_enrollment_benefit_summary row (days are computed live, like CURRENT_DATE in the view). */
@@ -94,14 +90,14 @@ export const BENEFIT_SUMMARY: BenefitSummary = {
   planYearStart: '2026-01-01',
   planYearEnd,
   annualMaximum: PLAN.annualMaximum,
-  rolloverBalance: 250,
+  rolloverBalance: 0,
   effectiveMaximum,
   usedToDate,
-  plannedPlanPays: 701,
+  plannedPlanPays: 0,
   remainingMaximum: Math.max(effectiveMaximum - usedToDate, 0),
   deductible: PLAN.deductibleIndividualIn,
-  deductibleMet: 50,
-  deductibleRemaining: 0,
+  deductibleMet: 0,
+  deductibleRemaining: PLAN.deductibleIndividualIn,
   daysRemaining,
   benefitsExpiringSoon: daysRemaining <= 90 && effectiveMaximum - usedToDate > 0,
 }
@@ -111,14 +107,14 @@ export const JARGON_TRANSLATIONS: JargonTranslation[] = [
   {
     id: 'j-1',
     topic: 'Use it or lose it',
-    planText: 'Unused benefits, including the Annual Maximum, do not carry forward except as provided under the Maximum Rollover provision.',
-    plainEnglish: 'Whatever is left of your yearly maximum on Dec 31 disappears. Only the rollover bonus below carries into next year.',
+    planText: 'Unused benefits, including the Annual Maximum, do not carry forward to any subsequent Benefit Period.',
+    plainEnglish: 'Whatever is left of your $1,500 yearly maximum on Dec 31 disappears. On Jan 1 you start again with a fresh $1,500.',
   },
   {
     id: 'j-2',
-    topic: 'Rollover',
-    planText: 'If paid claims during the Benefit Period do not exceed the Threshold of $1,000, $500 is credited to the Rollover Account, not to exceed the Rollover Account Limit of $1,250.',
-    plainEnglish: 'Light years are rewarded: if the plan pays less than $1,000 for you, $500 is banked for later (up to $1,250). You carried $250 into 2026.',
+    topic: 'Deductible',
+    planText: 'A Calendar Year Deductible of $50 per Covered Person ($100 out-of-network) applies to Class II (Basic) and Class III (Major) services.',
+    plainEnglish: 'Each year you pay the first $50 of fillings, root canals and crowns before the plan starts sharing the cost. Check-ups and cleanings skip it. You have not met it yet this year.',
   },
   {
     id: 'j-3',
@@ -130,6 +126,6 @@ export const JARGON_TRANSLATIONS: JargonTranslation[] = [
     id: 'j-4',
     topic: 'Crown frequency',
     planText: 'Crowns, inlays, onlays and fixed prosthetics are limited to one (1) per tooth per sixty (60) months.',
-    plainEnglish: 'Each tooth can get one covered crown every 5 years. Tooth #19 has had none, so its crown is eligible.',
+    plainEnglish: 'Each tooth can get one covered crown every 5 years. Tooth #14 has had none, so its crown is eligible.',
   },
 ]

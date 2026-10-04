@@ -22,4 +22,19 @@ export default tseslint.config([
       globals: globals.browser,
     },
   },
+  {
+    // The 3D room kit (src/components/3d) is plain JSX.
+    files: ['**/*.{js,jsx}'],
+    extends: [js.configs.recommended, reactHooks.configs['recommended-latest'], reactRefresh.configs.vite, jsxA11y.flatConfigs.recommended],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: globals.browser,
+      parserOptions: { ecmaFeatures: { jsx: true } },
+    },
+    rules: {
+      // Core no-unused-vars can't see components used only in JSX.
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+    },
+  },
 ])

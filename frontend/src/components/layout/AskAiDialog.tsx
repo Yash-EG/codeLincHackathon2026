@@ -9,6 +9,7 @@ import { announce, useUiStore } from '../../store/uiStore'
 import ChatPanel from '../assistant/ChatPanel'
 
 const SUGGESTIONS = [
+  'Root canal on tooth #14',
   'I need a crown on my upper right molar',
   'Can I get another cleaning this year?',
   'What expires on Dec 31?',
@@ -111,7 +112,7 @@ export default function AskAiDialog() {
                 type="button"
                 onClick={() => {
                   loadSamplePlan()
-                  announce('Sample plan checked in: Premier PPO.')
+                  announce('Sample plan checked in: Lincoln Preferred PPO.')
                 }}
                 className="inline-flex min-h-11 items-center rounded-xl bg-primary px-4 font-semibold text-white transition hover:bg-primary-strong"
               >
