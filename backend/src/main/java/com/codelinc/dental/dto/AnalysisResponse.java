@@ -32,7 +32,8 @@ public record AnalysisResponse(
         Kind kind,
         List<BenefitEstimate> estimates,
         String summary,
-        String clarificationQuestion
+        String clarificationQuestion,
+        TimingGuidance timing
 ) {
     /** Which of the two mutually exclusive outcomes an {@link AnalysisResponse} carries. */
     public enum Kind {
@@ -43,14 +44,25 @@ public record AnalysisResponse(
     }
 
     /**
-     * Builds an estimate response from one or more completed estimates.
+     * Builds an estimate response from one or more completed estimates, with no timing guidance.
      *
      * @param estimates the structured estimates (e.g. a single estimate, or an in/out comparison)
      * @param summary   an optional short summary; may be {@code null}
      * @return an {@link Kind#ESTIMATE} response
      */
     public static AnalysisResponse ofEstimates(List<BenefitEstimate> estimates, String summary) {
-        return new AnalysisResponse(Kind.ESTIMATE, List.copyOf(estimates), summary, null);
+        return new AnalysisResponse(Kind.ESTIMATE, List.copyOf(estimates), summary, null, null);
+    }
+
+    /**
+     * Returns a copy of this response with timing guidance attached. Timing is kept separate from the
+     * estimate math; it is attached only when {@code TreatmentTimingService} produced guidance.
+     *
+     * @param timing the timing guidance to attach (may be {@code null} for none)
+     * @return a copy carrying {@code timing}
+     */
+    public AnalysisResponse withTiming(TimingGuidance timing) {
+        return new AnalysisResponse(kind, estimates, summary, clarificationQuestion, timing);
     }
 
     /**
@@ -60,6 +72,6 @@ public record AnalysisResponse(
      * @return a {@link Kind#CLARIFICATION} response
      */
     public static AnalysisResponse ofClarification(String question) {
-        return new AnalysisResponse(Kind.CLARIFICATION, List.of(), null, question);
+        return new AnalysisResponse(Kind.CLARIFICATION, List.of(), null, question, null);
     }
 }

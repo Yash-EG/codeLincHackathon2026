@@ -50,17 +50,20 @@ public class AnalysisService {
     private final IntentExtractor intentExtractor;
     private final DentalDataAccess data;
     private final NetworkComparisonService comparisonService;
+    private final TreatmentTimingService timingService;
     private final AiService aiService;
     private final Clock clock;
 
     public AnalysisService(IntentExtractor intentExtractor,
                            DentalDataAccess data,
                            NetworkComparisonService comparisonService,
+                           TreatmentTimingService timingService,
                            AiService aiService,
                            Clock clock) {
         this.intentExtractor = intentExtractor;
         this.data = data;
         this.comparisonService = comparisonService;
+        this.timingService = timingService;
         this.aiService = aiService;
         this.clock = clock;
     }
@@ -177,7 +180,14 @@ public class AnalysisService {
 
         String summary = "Estimated cost of a " + procedure.canonicalName()
                 + " in network versus out of network under " + plan.planName() + ".";
-        return AnalysisResponse.ofEstimates(explained, summary);
+        AnalysisResponse response = AnalysisResponse.ofEstimates(explained, summary);
+
+        // Timing is kept separate: it is attached only when the plan data, benefit year, remaining
+        // maximum and the estimate's own over-maximum amount support saying something defensible.
+        // Based on the in-network snapshot's remaining annual maximum.
+        return timingService.guidanceFor(plan, benefitYear, inUse.get(), explained)
+                .map(response::withTiming)
+                .orElse(response);
     }
 
     private AnalysisResponse missingPricingData(ResolvedProcedure procedure) {

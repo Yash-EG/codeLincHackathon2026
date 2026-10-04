@@ -106,7 +106,8 @@ class AnalysisServiceTest {
 
     private AnalysisService service(IntentExtractor intent, DentalDataAccess data, AiService ai) {
         BenefitCalculatorService calc = new BenefitCalculatorService();
-        return new AnalysisService(intent, data, new NetworkComparisonService(calc), ai, fixedClock);
+        return new AnalysisService(intent, data, new NetworkComparisonService(calc),
+                new TreatmentTimingService(), ai, fixedClock);
     }
 
     private static DentalIntent crownComparisonRecommended() {
@@ -311,7 +312,8 @@ class AnalysisServiceTest {
         AnalysisService service = new AnalysisService(
                 fakeIntent(new DentalIntent(DentalIntentType.COST_ESTIMATE,
                         new ProcedureReference("crown", null, 19), null)),
-                data, new NetworkComparisonService(calc), estimate -> null, clock2024);
+                data, new NetworkComparisonService(calc), new TreatmentTimingService(),
+                estimate -> null, clock2024);
 
         AnalysisResponse response = service.analyze(USER, "crown cost");
 
