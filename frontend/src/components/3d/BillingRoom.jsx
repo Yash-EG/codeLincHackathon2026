@@ -103,10 +103,12 @@ function WaitingChair() {
           <Rod from={[x, 0.015, -0.2]} to={[x, 0.015, 0.26]} r={0.012}><Chrome /></Rod>
           <Rod from={[x, 0.015, 0.26]} to={[x, 0.44, 0.2]} r={0.012}><Chrome /></Rod>
           <Rod from={[x, 0.44, 0.2]} to={[x, 0.44, -0.18]} r={0.012}><Chrome /></Rod>
+          {/* back post: holds the backrest */}
+          <Rod from={[x, 0.44, -0.18]} to={[x, 0.86, -0.26]} r={0.012}><Chrome /></Rod>
         </group>
       ))}
       <Box s={[0.48, 0.08, 0.44]} p={[0, 0.49, 0.02]} r={0.035}>{leather}</Box>
-      <Box s={[0.48, 0.48, 0.08]} p={[0, 0.82, -0.2]} rot={[-0.12, 0, 0]} r={0.035}>{leather}</Box>
+      <Box s={[0.48, 0.48, 0.08]} p={[0, 0.765, -0.2]} rot={[-0.12, 0, 0]} r={0.035}>{leather}</Box>
     </group>
   );
 }
