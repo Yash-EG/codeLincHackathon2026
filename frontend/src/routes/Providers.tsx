@@ -1,15 +1,22 @@
-import { useId, useMemo, useState } from 'react'
-import { Check } from 'lucide-react'
+import { lazy, Suspense, useId, useMemo, useState } from 'react'
+import { Check, MapPin } from 'lucide-react'
 import { Link } from 'react-router'
+import { hasWebGL } from '../a11y/webgl'
+import { useReducedMotion } from '../a11y/useReducedMotion'
 import Panel from '../components/Panel'
 import RoomGate from '../components/RoomGate'
 import RoomIntro from '../components/RoomIntro'
 import SegmentedControl from '../components/SegmentedControl'
-import { eyebrow, fieldInput, textLink } from '../components/ui'
+import { buttonSecondary, eyebrow, fieldInput, textLink } from '../components/ui'
+import { hasCoordinates, mapToken } from '../lib/providerMap'
 import { ROOMS_BY_ID } from '../rooms'
 import { useSessionStore } from '../store/sessionStore'
+import { useViewMode } from '../store/settingsStore'
 import { announce } from '../store/uiStore'
 import type { Provider } from '../types/domain'
+
+// Mapbox is large (~1.5 MB), so the map is its own chunk, fetched only when this page shows it.
+const ProviderMap = lazy(() => import('../components/ProviderMap'))
 
 const room = ROOMS_BY_ID.providers
 
@@ -39,8 +46,15 @@ function ProviderDirectory() {
   const [network, setNetwork] = useState<NetworkFilter>('IN_NETWORK')
   const [specialty, setSpecialty] = useState<string>(ALL_SPECIALTIES)
   const [newPatientsOnly, setNewPatientsOnly] = useState(false)
+  const [pinned, setPinned] = useState<string | null>(null)
+  const [mapFailed, setMapFailed] = useState(false)
   const specialtyId = useId()
   const newPatientsId = useId()
+  const reduced = useReducedMotion()
+  const view = useViewMode()
+
+  // The map needs a Mapbox token and WebGL. Without either, the page is just the list.
+  const mapAvailable = useMemo(() => Boolean(mapToken()) && hasWebGL(), [])
 
   const specialties = useMemo(() => Array.from(new Set(providers.map((p) => p.specialty))).sort(), [providers])
 
@@ -57,6 +71,26 @@ function ProviderDirectory() {
         }),
     [providers, network, specialty, newPatientsOnly],
   )
+
+  // A filter can hide the chosen dentist; then nothing is chosen.
+  const selectedId = pinned !== null && results.some((p) => p.id === pinned) ? pinned : null
+
+  function select(id: string | null) {
+    setPinned(id)
+    const chosen = id ? results.find((p) => p.id === id) : undefined
+    if (chosen) announce(`Showing ${chosen.name} on the map.`)
+  }
+
+  function showOnMap(id: string) {
+    if (selectedId === id) {
+      select(null)
+      return
+    }
+    select(id)
+    document
+      .getElementById('map')
+      ?.scrollIntoView({ behavior: reduced || view === 'traditional' ? 'auto' : 'smooth', block: 'start' })
+  }
 
   if (providers.length === 0) {
     return (
@@ -125,7 +159,35 @@ function ProviderDirectory() {
             </label>
           </div>
         </div>
+
+        {import.meta.env.DEV && !mapToken() && (
+          <p className="text-sm text-ink-muted">
+            Developer note: the map is off. Add <code className="font-mono">VITE_MAPBOX_TOKEN</code> to{' '}
+            <code className="font-mono">frontend/.env</code> to turn it on.
+          </p>
+        )}
       </Panel>
+
+      {mapAvailable && (
+        <Panel id="map" eyebrow="Map" title="Where they are">
+          <p className="max-w-[62ch]">
+            The pins follow the filters above. Select one for the office&rsquo;s details; in-network offices are filled,
+            out-of-network offices are outlined.
+          </p>
+          <Suspense
+            fallback={
+              <div
+                role="status"
+                className="flex h-[22rem] items-center justify-center rounded-lg border border-line text-ink-muted sm:h-[26rem]"
+              >
+                Loading the map&hellip;
+              </div>
+            }
+          >
+            <ProviderMap providers={results} selectedId={selectedId} onSelect={select} onFail={() => setMapFailed(true)} />
+          </Suspense>
+        </Panel>
+      )}
 
       <Panel id="results" eyebrow="Results" title={`${results.length} ${results.length === 1 ? 'dentist' : 'dentists'}`}>
         <p className="sr-only" aria-live="polite">
@@ -137,7 +199,11 @@ function ProviderDirectory() {
           <ul className="border-t-2 border-primary/70">
             {results.map((p) => (
               <li key={p.id}>
-                <ProviderRow provider={p} />
+                <ProviderRow
+                  provider={p}
+                  onShowOnMap={mapAvailable && !mapFailed && hasCoordinates(p) ? () => showOnMap(p.id) : undefined}
+                  onMap={selectedId === p.id}
+                />
               </li>
             ))}
           </ul>
@@ -148,9 +214,19 @@ function ProviderDirectory() {
   )
 }
 
-function ProviderRow({ provider: p }: { provider: Provider }) {
+interface ProviderRowProps {
+  provider: Provider
+  /** Set when the map is on and this office has coordinates. */
+  onShowOnMap?: () => void
+  /** This office is the one the map is showing. */
+  onMap: boolean
+}
+
+function ProviderRow({ provider: p, onShowOnMap, onMap }: ProviderRowProps) {
   return (
-    <article className="border-b border-line py-4">
+    <article
+      className={`border-b border-l-2 border-line py-4 pl-4 ${onMap ? 'border-l-primary' : 'border-l-transparent'}`}
+    >
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
         <div className="min-w-0">
           <h3 className="font-serif text-xl leading-tight text-ink">{p.name}</h3>
@@ -199,6 +275,19 @@ function ProviderRow({ provider: p }: { provider: Provider }) {
           </dd>
         </div>
       </dl>
+
+      {onShowOnMap && (
+        <button
+          type="button"
+          aria-pressed={onMap}
+          onClick={onShowOnMap}
+          className={`${buttonSecondary} mt-3 aria-pressed:border-primary aria-pressed:bg-primary/[0.06]`}
+        >
+          <MapPin className="size-4" aria-hidden="true" />
+          Show on map
+          <span className="sr-only">: {p.name}</span>
+        </button>
+      )}
     </article>
   )
 }

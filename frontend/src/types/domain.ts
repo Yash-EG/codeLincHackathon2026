@@ -175,6 +175,9 @@ export interface Provider {
   state: string
   zip: string
   distanceMiles: number
+  /** Where the office is (WGS84). Optional: a listing without a geocode just isn't pinned on the map. */
+  lat?: number
+  lng?: number
   phone: string
   acceptingNewPatients: boolean
   /** 0–5, one decimal. */

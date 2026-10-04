@@ -13,6 +13,7 @@ import {
 export const STOPS = [
   { id: "intro",        ...view([-0.3, 1.0, -1.0], 7.4, 40, 24) },
   { id: "find",         ...view([-0.6, 1.55, -2.45], 3.3, 20, 6), focus: "map" },
+  { id: "map",          ...view([-0.6, 1.55, -2.45], 2.5, 8, 3), focus: "map" },
   { id: "results",      ...view([0.9, 0.85, -0.9], 3.4, 35, 22), focus: "desk" },
   { id: "no-directory", ...view([-0.6, 1.55, -2.45], 3.3, 20, 6), focus: "map" },
   { id: "missing",      ...view([-0.3, 1.0, -1.0], 7.4, 40, 24) },
