@@ -6,6 +6,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { PROCEDURES } from '../data/mockData'
 import { estimateProcedures, totalsFor, type EstimateContext } from '../lib/estimate'
 import { formatShortDate } from '../lib/format'
+import { compareTiming, nextYearContext, toRequests, type TimingComparison } from '../lib/sequencing'
 import type { CostLineItem, NetworkTier, ToothStatus } from '../types/domain'
 import type { ToothHistoryEntry } from '../components/ToothInspector'
 import { useSessionStore, type SessionData } from './sessionStore'
@@ -37,6 +38,32 @@ export function useLineItems(): CostLineItem[] {
 export function useTotals(network: NetworkTier) {
   const items = useLineItems()
   return useMemo(() => totalsFor(items, network), [items, network])
+}
+
+export interface NextYearPlan {
+  /** Care moved past the reset, priced against next year's fresh maximum and deductible. */
+  items: CostLineItem[]
+  /** This year's care plus that care, all now versus split across Jan 1. */
+  timing: TimingComparison
+}
+
+export function useNextYearPlan(): NextYearPlan | null {
+  const { plan, tiers, benefits, procedures, treatmentPlan } = useSessionStore(
+    useShallow((s) => ({
+      plan: s.plan,
+      tiers: s.tiers,
+      benefits: s.benefits,
+      procedures: s.procedures,
+      treatmentPlan: s.treatmentPlan,
+    })),
+  )
+  return useMemo(() => {
+    const ctx = buildEstimateContext({ plan, tiers, benefits })
+    if (!ctx || !plan || !benefits) return null
+    const later = toRequests(treatmentPlan.filter((t) => t.recommendedDate > benefits.planYearEnd))
+    const next = nextYearContext(ctx, plan)
+    return { items: estimateProcedures(later, next), timing: compareTiming(procedures, later, ctx, next) }
+  }, [plan, tiers, benefits, procedures, treatmentPlan])
 }
 
 export interface AnnualMax {

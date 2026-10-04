@@ -1,19 +1,14 @@
-// The user's session: plan, benefits, planned procedures and chat. Kept in
+// The user's session: plan, benefits, planned procedures, the assistant's
+// analysis and chat. Kept in
 // sessionStorage only, so it survives reloads and room changes but disappears
 // when the tab closes. Synthetic data only, nothing is sent to a server.
 
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
-import {
-  BENEFIT_SUMMARY,
-  CLAIMS,
-  COVERAGE_TIERS,
-  JARGON_TRANSLATIONS,
-  PLAN,
-  TREATMENT_PLAN,
-} from '../data/mockData'
+import { BENEFIT_SUMMARY, CLAIMS, COVERAGE_TIERS, JARGON_TRANSLATIONS, PLAN, SAMPLE_PROCEDURE_INPUT } from '../data/mockData'
 import { daysUntil, formatUsd } from '../lib/format'
 import type {
+  AiAnalysis,
   BenefitClaim,
   BenefitSummary,
   ChatMessage,
@@ -44,13 +39,17 @@ export interface SessionData {
   tiers: Record<CoverageClass, CoverageTier> | null
   benefits: BenefitSummary | null
   claims: BenefitClaim[]
-  /** The AI-sequenced plan, including items already pushed into the next plan year. */
+  /** Care the assistant moved into the next plan year (after the maximum and deductible reset). */
   treatmentPlan: TreatmentPlanItem[]
   /** Procedures being priced for this plan year (the cost breakdown). */
   procedures: ProcedureRequest[]
   translations: JargonTranslation[]
   network: NetworkTier
   selectedTooth: number | null
+  /** What the user typed in "Describe your care". */
+  procedureInput: string
+  /** The assistant's read of the last procedure it priced. */
+  aiAnalysis: AiAnalysis | null
   messages: ChatMessage[]
 }
 
@@ -59,6 +58,13 @@ interface SessionActions {
   setManualPlan: (input: ManualPlanInput) => void
   addProcedures: (requests: ProcedureRequest[]) => void
   removeProcedure: (requestId: string) => void
+  /** Adds care to the next plan year. */
+  deferToNextYear: (items: TreatmentPlanItem[]) => void
+  removePlanItem: (itemId: string) => void
+  /** Corrects the checked-in plan's annual maximum or the amount already used this year. */
+  updateBenefits: (patch: { annualMax?: number; used?: number }) => void
+  setProcedureInput: (text: string) => void
+  setAiAnalysis: (analysis: AiAnalysis | null) => void
   setNetwork: (network: NetworkTier) => void
   selectTooth: (toothNumber: number | null) => void
   appendMessage: (message: ChatMessage) => void
@@ -77,6 +83,8 @@ const EMPTY: SessionData = {
   translations: [],
   network: 'IN_NETWORK',
   selectedTooth: null,
+  procedureInput: SAMPLE_PROCEDURE_INPUT,
+  aiAnalysis: null,
   messages: [],
 }
 
@@ -88,23 +96,9 @@ function greetingFor(benefits: BenefitSummary): ChatMessage {
     content:
       `Hi ${firstName}. I've loaded your ${benefits.planName} benefits: ` +
       `${formatUsd(benefits.remainingMaximum)} of your ${formatUsd(benefits.effectiveMaximum)} maximum is left, ` +
-      `and it resets in ${benefits.daysRemaining} days. Pick a tooth or describe what your dentist recommended, ` +
+      `and it resets in ${benefits.daysRemaining} days. Describe what your dentist recommended or pick a tooth, ` +
       `and I'll show what insurance covers and what you'd pay.`,
   }
-}
-
-/** Treatment-plan items inside the current plan year seed the cost breakdown. */
-function requestsForPlanYear(plan: TreatmentPlanItem[], planYearEnd: string): ProcedureRequest[] {
-  return plan
-    .filter((item) => item.recommendedDate <= planYearEnd)
-    .sort((a, b) => a.sequenceOrder - b.sequenceOrder)
-    .map((item) => ({
-      id: item.id,
-      cdtCode: item.cdtCode,
-      toothNumber: item.toothNumber,
-      surfaces: item.surfaces ?? undefined,
-      recommendedDate: item.recommendedDate,
-    }))
 }
 
 export const useSessionStore = create<SessionState>()(
@@ -119,8 +113,6 @@ export const useSessionStore = create<SessionState>()(
           tiers: COVERAGE_TIERS,
           benefits: BENEFIT_SUMMARY,
           claims: CLAIMS,
-          treatmentPlan: TREATMENT_PLAN,
-          procedures: requestsForPlanYear(TREATMENT_PLAN, BENEFIT_SUMMARY.planYearEnd),
           translations: JARGON_TRANSLATIONS,
           messages: [greetingFor(BENEFIT_SUMMARY)],
         }),
@@ -188,6 +180,29 @@ export const useSessionStore = create<SessionState>()(
 
       addProcedures: (requests) => set((s) => ({ procedures: [...s.procedures, ...requests] })),
       removeProcedure: (requestId) => set((s) => ({ procedures: s.procedures.filter((r) => r.id !== requestId) })),
+      deferToNextYear: (items) => set((s) => ({ treatmentPlan: [...s.treatmentPlan, ...items] })),
+      removePlanItem: (itemId) => set((s) => ({ treatmentPlan: s.treatmentPlan.filter((t) => t.id !== itemId) })),
+      updateBenefits: ({ annualMax, used }) =>
+        set((s) => {
+          if (!s.plan || !s.benefits) return {}
+          const annualMaximum = annualMax ?? s.benefits.annualMaximum
+          const usedToDate = used ?? s.benefits.usedToDate
+          const effectiveMaximum = annualMaximum + s.benefits.rolloverBalance
+          const remainingMaximum = Math.max(effectiveMaximum - usedToDate, 0)
+          return {
+            plan: { ...s.plan, annualMaximum },
+            benefits: {
+              ...s.benefits,
+              annualMaximum,
+              effectiveMaximum,
+              usedToDate,
+              remainingMaximum,
+              benefitsExpiringSoon: s.benefits.daysRemaining <= 90 && remainingMaximum > 0,
+            },
+          }
+        }),
+      setProcedureInput: (procedureInput) => set({ procedureInput }),
+      setAiAnalysis: (aiAnalysis) => set({ aiAnalysis }),
       setNetwork: (network) => set({ network }),
       selectTooth: (selectedTooth) => set({ selectedTooth }),
       appendMessage: (message) => set((s) => ({ messages: [...s.messages, message] })),
@@ -195,7 +210,9 @@ export const useSessionStore = create<SessionState>()(
     }),
     {
       name: 'molarity-session',
-      version: 1,
+      // v2: the challenge's sample plan and the assistant's analysis. Older sessions start over.
+      version: 2,
+      migrate: () => EMPTY as SessionState,
       storage: createJSONStorage(() => sessionStorage),
     },
   ),

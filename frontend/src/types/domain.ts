@@ -132,3 +132,32 @@ export interface ChatMessage {
   toothNumber?: number | null
   lineItems?: CostLineItem[]
 }
+
+/** One step of the order the assistant suggests doing care in. */
+export interface SequenceStep {
+  step: number
+  /** e.g. "Root canal, molar on tooth #14". */
+  label: string
+  /** This plan year, or after the maximum and deductible reset. */
+  timing: 'this-year' | 'next-year'
+  /** When to book it (ISO date), if the assistant suggests one. */
+  date?: string
+  /** What you'd pay in-network for this step. */
+  youPay: number
+  reason: string
+}
+
+/** The assistant's read of the procedure the user described (Bedrock output, mocked offline). */
+export interface AiAnalysis {
+  /** The procedure in plain English. */
+  simplifiedExplanation: string
+  /** Full in-network price before insurance, all steps. */
+  estimatedCost: number
+  /** What you'd pay with an in-network dentist, in the suggested order. */
+  inNetworkCost: number
+  /** What you'd pay with an out-of-network dentist, in the suggested order. */
+  outOfNetworkCost: number
+  suggestedSequence: SequenceStep[]
+  /** How much the suggested order saves compared with doing everything this plan year. */
+  savings: number
+}
