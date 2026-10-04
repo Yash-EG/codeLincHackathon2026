@@ -30,11 +30,15 @@ public class EducationIntentRouter {
 
     private final Glossary glossary;
 
-    // "how much ... cost/pay", "price of", "estimate for", "what will X cost me"
+    // "how much ... cost/pay", "price of", "estimate for", "what will X cost me", "what happens if I get X in <month>"
     private static final Pattern ESTIMATE = Pattern.compile(
             "\\b(how much|what('s| is| does| will| would)?\\s+(it|this|that|a|an|my)?\\s*(cost|charge|pay|price)"
                     + "|cost(s)?\\s+(me|to)|price(s)?\\s+(of|for)|estimate(d)?|out[- ]of[- ]pocket\\s+(cost|for)"
-                    + "|co(-| )?pay\\s+(amount|for)\\s+(a|an|my)\\s+)",
+                    + "|co(-| )?pay\\s+(amount|for)\\s+(a|an|my)\\s+"
+                    // Scenario / timing questions about care ("what happens if I get a crown in
+                    // November", "should I wait until January") are also estimate territory.
+                    + "|what happens if|what if i|when (should|can) i|should i (get|have|wait|do|schedule)"
+                    + "|\\bin (january|february|march|april|may|june|july|august|september|october|november|december)\\b)",
             Pattern.CASE_INSENSITIVE);
 
     // Procedure nouns that, combined with a cost cue, mean "estimate".
