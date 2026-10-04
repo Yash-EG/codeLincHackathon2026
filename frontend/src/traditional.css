@@ -1,0 +1,263 @@
+/*
+ * Traditional view: the same pages as a plain, solid document. No 3D, no glass,
+ * no shadows, no motion. A rail on the left (the rooms, then this page's
+ * sections), one readable column on the right (about 70 characters a line), and
+ * every section a band under a hairline.
+ *
+ * Everything here is scoped to :root:not([data-view="immersive"]) so the 3D view
+ * is untouched, and it is plain CSS (no @apply). It is unlayered, so it wins over
+ * the Tailwind utility classes on the shared components without !important
+ * (except for the motion and lift resets, which must beat utilities on state).
+ *
+ * Imported once from index.css.
+ */
+
+/* The wrappers AppShell puts around the rail and the page. In the 3D view they have no box. */
+.app-body,
+.app-column {
+  display: contents;
+}
+
+:root:not([data-view="immersive"]) {
+  --trad-rail: 14rem;
+  --trad-measure: 42rem;
+  /* One step up from the default (17px): every rem-based size, and the user's own
+     browser text-size setting, scales with it. */
+  font-size: 106.25%;
+}
+
+/* ------------------------------------------------------------------ layout */
+
+/* Below lg: one centered column, no rail. */
+:root:not([data-view="immersive"]) .app-body {
+  display: block;
+  max-width: calc(var(--trad-measure) + 2rem);
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+@media (min-width: 40rem) {
+  :root:not([data-view="immersive"]) .app-body {
+    max-width: calc(var(--trad-measure) + 3rem);
+    padding-inline: 1.5rem;
+  }
+}
+
+/* lg and up: the rail beside the column, centered as one block. */
+@media (min-width: 64rem) {
+  :root:not([data-view="immersive"]) .app-body {
+    display: grid;
+    /* The rail (with its 1.5rem of right padding), then the page column (a 1px rule and
+       2.5rem of left padding, then the text at exactly the measure). */
+    grid-template-columns: calc(var(--trad-rail) + 1.5rem) minmax(0, calc(var(--trad-measure) + 2.5rem + 1px));
+    justify-content: center;
+    max-width: none;
+    padding-inline: 2rem;
+  }
+  :root:not([data-view="immersive"]) .app-column {
+    display: block;
+    min-width: 0;
+    /* The divider runs the full height of the page, not just the height of the rail. */
+    border-left: 1px solid var(--color-line);
+    padding-left: 2.5rem;
+  }
+  /* The rail lists every room, so the header's directory dropdown is redundant here. */
+  :root:not([data-view="immersive"]) header nav[aria-label="Building directory"] {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------------ sections */
+
+/* A frosted card becomes a plain band: no card, border, blur, grain or shadow. */
+:root:not([data-view="immersive"]) .panel {
+  position: static;
+  isolation: auto;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  padding: 2.5rem 0;
+}
+:root:not([data-view="immersive"]) .panel::before {
+  display: none;
+}
+:root:not([data-view="immersive"]) .room-stop + .room-stop {
+  border-top: 1px solid var(--color-line);
+}
+/* Section body text: 17px (the 15px in the component is a fixed px size). */
+:root:not([data-view="immersive"]) .panel > div:last-child {
+  font-size: 1rem;
+}
+:root:not([data-view="immersive"]) .panel p {
+  max-width: 68ch;
+}
+
+/* The page's bottom padding makes room for the fixed max bar; the footer carries it instead.
+   The wrapper's own padding and the gaps between sections are gone too: the bands
+   and hairlines above do the spacing. */
+:root:not([data-view="immersive"]) main {
+  padding-bottom: 0;
+}
+:root:not([data-view="immersive"]) main > div {
+  padding: 0;
+}
+:root:not([data-view="immersive"]) main > div > * {
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------ the rail */
+
+.trad-rail {
+  display: none;
+}
+@media (min-width: 64rem) {
+  :root:not([data-view="immersive"]) .trad-rail {
+    display: block;
+    position: sticky;
+    top: calc(var(--header-h, 0px) + 1rem);
+    align-self: start;
+    /* Never taller than the space between the header and the max bar. */
+    max-height: calc(100svh - var(--header-h, 0px) - var(--maxbar-h, 0px) - 2rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 2rem 1.5rem 2rem 0;
+  }
+}
+@media (min-width: 64rem) and (max-height: 30rem) {
+  /* Short viewports (zoomed): the header and max bar stop being fixed, so the rail scrolls with the page. */
+  :root:not([data-view="immersive"]) .trad-rail {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+.trad-rail__label {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+.trad-rail nav + nav {
+  margin-top: 1.5rem;
+}
+.trad-rail ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.trad-rail a {
+  display: flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0.25rem 0.75rem;
+  border-left: 2px solid transparent;
+  font-size: 0.9375rem;
+  line-height: 1.3;
+  color: var(--color-ink-muted);
+  text-decoration: none;
+}
+.trad-rail a:hover {
+  color: var(--color-ink);
+  background: var(--color-paper);
+}
+/* Current room / current section: a 2px rule and heavier type, never colour alone. */
+.trad-rail a[aria-current] {
+  border-left-color: var(--color-primary);
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.trad-rail nav + nav a {
+  min-height: 2rem;
+  font-size: 0.875rem;
+}
+/* Forced-colors mode paints "transparent" borders in a system colour, so say it outright:
+   hidden on the canvas, Highlight for the current room or section. */
+@media (forced-colors: active) {
+  .trad-rail a {
+    border-left-color: Canvas;
+  }
+  .trad-rail a[aria-current] {
+    border-left-color: Highlight;
+  }
+}
+
+/* ------------------------------------------------------------------ footer */
+
+.trad-footer {
+  border-top: 1px solid var(--color-line);
+  padding: 1.5rem 0 calc(var(--maxbar-h, 0px) + 2rem);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--color-ink-muted);
+}
+.trad-footer p {
+  max-width: 68ch;
+  margin: 0;
+}
+.trad-footer p + p {
+  margin-top: 0.5rem;
+}
+@media (max-height: 30rem) {
+  .trad-footer {
+    padding-bottom: 2rem;
+  }
+}
+
+/* ------------------------------------------------------------------ no motion, no lift */
+
+:root:not([data-view="immersive"]) *,
+:root:not([data-view="immersive"]) *::before,
+:root:not([data-view="immersive"]) *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+/* Buttons and links sit still on hover: no 2px lift and no shadow (arbitrary inset
+   shadows are selection marks, so they stay). */
+:root:not([data-view="immersive"]) :is(a, button, label, summary) {
+  translate: none !important;
+}
+:root:not([data-view="immersive"]) :is(a, button):not([class*="shadow-["]) {
+  box-shadow: none !important;
+}
+
+/* ------------------------------------------------------------------ contrast and print */
+
+@media (prefers-contrast: more) {
+  :root:not([data-view="immersive"]) {
+    --color-ink-muted: #3d4651;
+    --color-line: #818c88;
+    --color-control: #4b5a60;
+  }
+}
+
+@media print {
+  :root:not([data-view="immersive"]) header,
+  :root:not([data-view="immersive"]) .trad-rail,
+  :root:not([data-view="immersive"]) aside[aria-label="Annual maximum"],
+  :root:not([data-view="immersive"]) dialog {
+    display: none !important;
+  }
+  :root:not([data-view="immersive"]) {
+    font-size: 100%;
+  }
+  :root:not([data-view="immersive"]) .app-body {
+    display: block;
+    max-width: none;
+    padding: 0;
+  }
+  :root:not([data-view="immersive"]) .panel {
+    break-inside: avoid-page;
+    padding: 1.25rem 0;
+  }
+  :root:not([data-view="immersive"]) .trad-footer {
+    padding-bottom: 0;
+  }
+}

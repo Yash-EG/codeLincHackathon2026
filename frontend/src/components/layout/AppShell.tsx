@@ -5,13 +5,14 @@ import { useRouteFocus } from '../../a11y/useRouteFocus'
 import { roomForPath } from '../../rooms'
 import { useCopilotFeed } from '../../store/useCopilotFeed'
 import { useViewMode } from '../../store/settingsStore'
-import { ParallaxBackdrop, ParallaxScene } from '../Parallax'
+import { ParallaxScene } from '../Parallax'
 import SceneErrorBoundary from '../SceneErrorBoundary'
 import AskAiDialog from './AskAiDialog'
 import Header from './Header'
 import LiveRegion from './LiveRegion'
 import MaxBar from './MaxBar'
 import SkipLink from './SkipLink'
+import { TraditionalFooter, TraditionalRail } from './TraditionalChrome'
 
 // The 3D layer (three.js, R3F, GSAP) is its own chunk: traditional view never downloads it.
 const SceneRoot = lazy(() => import('../3d/SceneRoot'))
@@ -42,16 +43,22 @@ export default function AppShell() {
         aria-hidden="true"
         className="grain pointer-events-none fixed inset-y-0 left-0 z-30 hidden w-(--drawer-w) border-r border-line bg-(--drawer-bg) immersive:lg:block"
       />
-      <main id="main" tabIndex={-1} className="relative z-40 pb-[calc(var(--maxbar-h,0px)+2.5rem)] short:pb-10">
-        <div className="space-y-6 px-4 py-6 sm:px-6 sm:py-8 traditional:mx-auto traditional:max-w-3xl immersive:lg:w-(--drawer-w) immersive:lg:space-y-0 immersive:lg:px-12 immersive:lg:py-0">
-          <Outlet />
+      {/* .app-body / .app-column have no box in the 3D view; the Traditional view (traditional.css) lays them out as rail + page. */}
+      <div className="app-body">
+        {view === 'traditional' && <TraditionalRail />}
+        <div className="app-column">
+          <main id="main" tabIndex={-1} className="relative z-40 pb-[calc(var(--maxbar-h,0px)+2.5rem)] short:pb-10">
+            <div className="space-y-6 px-4 py-6 sm:px-6 sm:py-8 traditional:space-y-0 traditional:p-0 immersive:lg:w-(--drawer-w) immersive:lg:space-y-0 immersive:lg:px-12 immersive:lg:py-0">
+              <Outlet />
+            </div>
+          </main>
+          {view === 'traditional' && <TraditionalFooter />}
         </div>
-      </main>
+      </div>
       <MaxBar />
       <AskAiDialog />
       <LiveRegion />
       <ScrollRestoration />
-      {view === 'traditional' && <ParallaxBackdrop />}
       {view === 'immersive' && (
         <SceneErrorBoundary fallback={null}>
           <Suspense fallback={null}>
