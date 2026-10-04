@@ -21,6 +21,7 @@ import type {
   Provider,
 } from '../types/domain'
 import { daysUntil } from '../lib/format'
+import { milesBetween } from '../lib/geo'
 
 export const PLAN: InsurancePlan = {
   id: '22222222-2222-4222-8222-000000000002',
@@ -99,8 +100,6 @@ export const CLAIMS: BenefitClaim[] = [
   { cdtCode: 'D0140', toothNumber: 14, serviceDate: '2026-09-28', planPaid: 72, patientPaid: 0 },
 ]
 
-/** What the demo user types in the Operatory: the procedure their dentist recommended. */
-export const SAMPLE_PROCEDURE_INPUT = 'Root canal on tooth #14'
 
 const usedToDate = CLAIMS.reduce((sum, c) => sum + c.planPaid, 0) // 400
 const planYearEnd = '2026-12-31'
@@ -206,14 +205,6 @@ export const SAMPLE_PLANS: Record<SamplePlanId, SamplePlan> = {
  * network). Fictional offices (real Greensboro and Columbus streets) and 555 numbers; in-network status is what the
  * plan would report. Mirrors a future `providers` API response.
  */
-/** Straight-line miles between two points (haversine), rounded to a tenth. */
-function milesBetween(a: [number, number], b: [number, number]): number {
-  const rad = (d: number) => (d * Math.PI) / 180
-  const h =
-    Math.sin(rad(b[0] - a[0]) / 2) ** 2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(rad(b[1] - a[1]) / 2) ** 2
-  return Math.round(3958.8 * 2 * Math.asin(Math.sqrt(h)) * 10) / 10
-}
-
 /** Where "near me" is for the Greensboro offices: downtown (27401). */
 const GREENSBORO_CENTER: [number, number] = [36.0726, -79.792]
 

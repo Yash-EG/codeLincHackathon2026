@@ -3,7 +3,6 @@ import { Outlet, ScrollRestoration, useLocation } from 'react-router'
 import { useReducedMotion } from '../../a11y/useReducedMotion'
 import { useRouteFocus } from '../../a11y/useRouteFocus'
 import { roomForPath } from '../../rooms'
-import { useCopilotFeed } from '../../store/useCopilotFeed'
 import { useViewMode } from '../../store/settingsStore'
 import { ParallaxScene } from '../Parallax'
 import SceneErrorBoundary from '../SceneErrorBoundary'
@@ -27,7 +26,6 @@ export default function AppShell() {
   const { pathname } = useLocation()
   const room = roomForPath(pathname)
   useRouteFocus()
-  useCopilotFeed()
 
   // Set before paint so panels never flash the wrong style.
   useLayoutEffect(() => {

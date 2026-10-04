@@ -12,8 +12,7 @@ interface PrimaryItem {
 
 /**
  * The three primary things Molarity does, surfaced in every room, in the order you do them. These point
- * at existing rooms so there is one canonical page per function; the full
- * building Directory (all rooms) still lives beside the brand in the header.
+ * at existing rooms so there is one canonical page per function.
  */
 const PRIMARY: PrimaryItem[] = [
   {

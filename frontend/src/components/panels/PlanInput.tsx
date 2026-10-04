@@ -7,7 +7,6 @@ import { formatLongDate, formatUsd } from '../../lib/format'
 import { useSessionStore } from '../../store/sessionStore'
 import { announce } from '../../store/uiStore'
 import CheckInForm from '../CheckInForm'
-import CopilotNote from '../CopilotNote'
 import Panel from '../Panel'
 import PdfDropzone from '../PdfDropzone'
 import { buttonPrimary, buttonSecondary, fieldInput, ledger } from '../ui'
@@ -93,7 +92,6 @@ export default function PlanInput() {
           <SummaryRow label="Plan year ends" value={formatLongDate(benefits.planYearEnd)} />
           <SummaryRow label="Days left" value={String(benefits.daysRemaining)} />
         </dl>
-        <CopilotNote />
         <AdjustNumbers
           key={`${benefits.annualMaximum}-${benefits.usedToDate}`}
           annualMaximum={benefits.annualMaximum}

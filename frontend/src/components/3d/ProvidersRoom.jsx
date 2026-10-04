@@ -1,13 +1,16 @@
 /**
  * ProvidersRoom.jsx — room 8 (in-network providers). Same kit and style as rooms 1–7.
- * Signature objects: the referral desk, and a cork-board "map" of nearby offices
- * pinned in maroon (in-network) and grey (out-of-network) under a FIND A DENTIST sign.
+ * Signature objects: the referral desk, and a cork board under a FIND A DENTIST sign with a
+ * street map of the demo offices pinned in maroon (in-network) and grey (out-of-network),
+ * a numbered directory card and a sticky note (drawn in providersBoard.js).
  * Preview:  <RoomPreview Room={ProvidersRoom} stops={STOPS} />
  */
+import * as THREE from "three";
 import {
-  C, tex, Mat, Box, Cyl, OnWall, RoomShell, Door, Window, Clock, CorkBoard, SignBoard, Laptop, Books,
+  C, tex, Mat, Box, Cyl, Plane, OnWall, RoomShell, Door, Window, Clock, CorkBoard, SignBoard, Laptop, Books,
   TaskChair, PalmPlant, SnakePlant, Pickable, Chrome, ContactShadow, view,
 } from "./roomKit";
+import { BOARD_OFFICES, MAP_ASPECT, drawDirectory, drawMap, drawSticky, projectOnSheet } from "./providersBoard";
 
 /** One stop per content section on /providers, framed tight on its focal object (fov 24). */
 export const STOPS = [
@@ -24,33 +27,88 @@ export const DOORS = [{ id: "hallway", plaque: "8", wall: "left", u: 1.3 }];
 
 const WAINSCOT = { h: 1.0, color: C.sage };
 
-/** Map pins on the board: [x, y, in-network]. Board-local, metres from its centre. */
-const PINS = [
-  [-0.52, 0.2, true], [-0.31, -0.08, true], [-0.05, 0.27, true], [0.12, -0.2, true],
-  [0.34, 0.12, true], [0.5, -0.05, true], [-0.4, -0.3, false], [0.58, 0.3, false],
-];
+/** Canvas textures for the board's paper, made once. */
+const paperTextures = new Map();
+function paperTexture(key, w, h, draw) {
+  if (!paperTextures.has(key)) {
+    const cv = document.createElement("canvas");
+    cv.width = w;
+    cv.height = h;
+    draw(cv.getContext("2d"), w, h);
+    const t = new THREE.CanvasTexture(cv);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 8;
+    paperTextures.set(key, t);
+  }
+  return paperTextures.get(key);
+}
 
-/** The board as a street map: cork, a few paper "streets", and pins for each office. */
+/** A map pin: steel needle and a round head, maroon for in-network, grey for out-of-network. */
+function MapPin({ p, inNetwork }) {
+  return (
+    <group position={p}>
+      <Cyl a={[0.003, 0.003, 0.03, 6]} p={[0, 0, 0.015]} rot={[Math.PI / 2, 0, 0]}>
+        <Chrome r={0.3} />
+      </Cyl>
+      <mesh position={[0, 0, 0.034]} castShadow>
+        <sphereGeometry args={[0.016, 16, 12]} />
+        <Mat c={inNetwork ? C.maroon : "#9aa1a6"} r={0.35} />
+      </mesh>
+    </group>
+  );
+}
+
+/** A flat brass thumbtack holding a sheet up. */
+function Tack({ p }) {
+  return (
+    <Cyl a={[0.011, 0.011, 0.005, 16]} p={p} rot={[Math.PI / 2, 0, 0]}>
+      <Mat c="#c9a227" m={0.7} r={0.35} />
+    </Cyl>
+  );
+}
+
+const MAP_W = 0.98, MAP_H = MAP_W / MAP_ASPECT;
+const CARD_W = 0.4, CARD_H = CARD_W / 0.75;
+const NOTE_W = 0.28, NOTE_H = NOTE_W / 1.4;
+
+/**
+ * The board: a paper street map of Greensboro with every demo office pinned and numbered,
+ * an index card listing them, and a sticky note, all on cork.
+ */
 function OfficeMap() {
-  const paper = <Mat map={tex.paper()} r={0.85} />;
+  const map = paperTexture("map", 1024, Math.round(1024 / MAP_ASPECT), drawMap);
+  const card = paperTexture("card", 512, Math.round(512 / 0.75), drawDirectory);
+  const note = paperTexture("note", 384, Math.round(384 / 1.4), drawSticky);
   return (
     <group>
       <CorkBoard w={1.6} h={1.0} />
-      <Box s={[1.4, 0.03, 0.004]} p={[0, 0.05, 0.016]}>{paper}</Box>
-      <Box s={[1.4, 0.03, 0.004]} p={[0, -0.22, 0.016]} rot={[0, 0, 0.08]}>{paper}</Box>
-      <Box s={[0.03, 0.82, 0.004]} p={[-0.18, 0, 0.016]}>{paper}</Box>
-      <Box s={[0.03, 0.82, 0.004]} p={[0.28, 0, 0.016]} rot={[0, 0, -0.12]}>{paper}</Box>
-      {PINS.map(([x, y, inNetwork]) => (
-        <group key={`${x}${y}`} position={[x, y, 0.02]}>
-          <Cyl a={[0.003, 0.003, 0.03, 6]} p={[0, 0, 0.015]} rot={[Math.PI / 2, 0, 0]}>
-            <Chrome r={0.3} />
-          </Cyl>
-          <mesh position={[0, 0, 0.034]} castShadow>
-            <sphereGeometry args={[0.018, 16, 12]} />
-            <Mat c={inNetwork ? C.maroon : "#9aa1a6"} r={0.35} />
-          </mesh>
-        </group>
-      ))}
+
+      <group position={[-0.22, -0.02, 0.0145]} rotation={[0, 0, 0.008]}>
+        <Plane s={[MAP_W, MAP_H]}>
+          <Mat map={map} r={0.85} />
+        </Plane>
+        {[[-1, 1], [1, 1], [-1, -1], [1, -1]].map(([sx, sy]) => (
+          <Tack key={`${sx}${sy}`} p={[sx * (MAP_W / 2 - 0.025), sy * (MAP_H / 2 - 0.025), 0.003]} />
+        ))}
+        {BOARD_OFFICES.map((o) => {
+          const { u, v } = projectOnSheet(o.lat, o.lng);
+          return <MapPin key={o.n} p={[(u - 0.5) * MAP_W, (0.5 - v) * MAP_H, 0.001]} inNetwork={o.inNetwork} />;
+        })}
+      </group>
+
+      <group position={[0.5, -0.08, 0.015]} rotation={[0, 0, -0.025]}>
+        <Plane s={[CARD_W, CARD_H]}>
+          <Mat map={card} r={0.85} />
+        </Plane>
+        <Tack p={[-CARD_W / 2 + 0.03, CARD_H / 2 - 0.025, 0.003]} />
+        <Tack p={[CARD_W / 2 - 0.03, CARD_H / 2 - 0.025, 0.003]} />
+      </group>
+
+      <group position={[0.52, 0.31, 0.0155]} rotation={[0, 0, 0.04]}>
+        <Plane s={[NOTE_W, NOTE_H]}>
+          <Mat map={note} r={0.9} />
+        </Plane>
+      </group>
     </group>
   );
 }

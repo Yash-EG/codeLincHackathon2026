@@ -1,7 +1,7 @@
 // Client for the cost-estimate / in-vs-out-of-network analyzer
 // (backend: POST /api/analyze -> AnalysisResponse).
 //
-// This is the real-backend counterpart to lib/mockAssistant.ts. It sends the
+// This is the client for the real backend analyzer. It sends the
 // user's free text to the Spring Boot analyzer, which uses Bedrock to interpret
 // intent, loads TRUSTED plan/coverage/usage from Neon, prices the procedure
 // in- and out-of-network with Jay's calculator, and returns structured
@@ -12,8 +12,7 @@
 //   BenefitEstimate   (dto/BenefitEstimate.java)  -> money fields match CostEstimate
 //   TimingGuidance    (dto/TimingGuidance.java)
 //
-// On any network/HTTP error we throw, so callers (useAssistant) can fall back to
-// the offline mock and keep the demo working without the Spring Boot service.
+// On any network/HTTP error we throw, and the caller (useAssistant) shows the failure.
 
 import type {
   AiAnalysis,
@@ -89,7 +88,7 @@ export interface AnalyzeResult {
 
 /**
  * Ask the backend analyzer. Throws on any network/HTTP error so the caller can
- * fall back to the offline mock. The Vite dev server proxies /api -> :8080.
+ * show it. The Vite dev server proxies /api -> :8080.
  */
 export async function analyze(req: AnalyzeRequest): Promise<AnalyzeResult> {
   const res = await fetch('/api/analyze', {

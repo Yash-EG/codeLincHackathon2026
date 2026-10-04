@@ -147,7 +147,7 @@ export interface SequenceStep {
   reason: string
 }
 
-/** The assistant's read of the procedure the user described (Bedrock output, mocked offline). */
+/** The assistant's read of the procedure the user described (Bedrock output). */
 export interface AiAnalysis {
   /** The procedure in plain English. */
   simplifiedExplanation: string
