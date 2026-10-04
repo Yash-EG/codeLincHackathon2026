@@ -16,12 +16,6 @@ export interface AssistantReply {
 }
 
 /**
- * The Neon user whose trusted plan/usage the backend prices against. The demo
- * seed data (db/migrations/V2) is user "1". Change here if the demo user differs.
- */
-const DEMO_USER_ID = '1'
-
-/**
  * Sends a message to the benefits assistant: POST /api/analyze (Bedrock reads the
  * intent, Neon prices it). There is no offline stand-in, so when the backend
  * can't answer the chat says so, with the reason, instead of making something up.
@@ -38,7 +32,8 @@ export function useAssistant() {
     useUiStore.getState().setThinking(true)
     try {
       const toothSuffix = session.selectedTooth != null ? ` on tooth #${session.selectedTooth}` : ''
-      const result = await analyze({ userId: DEMO_USER_ID, message: text + toothSuffix })
+      // Priced against the member checked in at Reception (the demo user until someone is).
+      const result = await analyze({ userId: session.memberId, message: text + toothSuffix })
       const store = useSessionStore.getState()
       store.appendMessage({ id: nextId('msg'), role: 'assistant', content: result.content, lineItems: result.lineItems })
       if (result.requests.length > 0) store.addProcedures(result.requests)

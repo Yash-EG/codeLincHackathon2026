@@ -7,6 +7,7 @@ import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { CLAIMS, PROVIDERS, SAMPLE_PLANS, type SamplePlanId } from '../data/mockData'
 import { daysUntil, formatUsd } from '../lib/format'
+import { memberPlan, type Member } from '../lib/membersApi'
 import type {
   AiAnalysis,
   BenefitClaim,
@@ -21,6 +22,9 @@ import type {
   Provider,
   TreatmentPlanItem,
 } from '../types/domain'
+
+/** The demo user in db/migrations/V2: who the sample and typed-in plans price against. */
+export const DEMO_MEMBER_ID = '1'
 
 /** What the Reception check-in form collects when the user types in their own plan. */
 export interface ManualPlanInput {
@@ -46,6 +50,11 @@ export interface DecodeChatMessage {
 }
 
 export interface SessionData {
+  /**
+   * The database user the backend prices against (POST /api/analyze userId). "1" is the demo
+   * user in db/migrations/V2; checking someone in at Reception sets it to their id.
+   */
+  memberId: string
   plan: InsurancePlan | null
   tiers: Record<CoverageClass, CoverageTier> | null
   benefits: BenefitSummary | null
@@ -74,6 +83,8 @@ export interface SessionData {
 interface SessionActions {
   /** Checks in one of the sample plans (default: Lincoln Preferred PPO). */
   loadSamplePlan: (id?: SamplePlanId) => void
+  /** Checks in an employee from the member database (Reception's front desk). */
+  checkInMember: (member: Member) => void
   setManualPlan: (input: ManualPlanInput) => void
   addProcedures: (requests: ProcedureRequest[]) => void
   /** Appends one planned procedure; care can be added one at a time after the plan is set. */
@@ -98,6 +109,7 @@ interface SessionActions {
 export type SessionState = SessionData & SessionActions
 
 const EMPTY: SessionData = {
+  memberId: DEMO_MEMBER_ID,
   plan: null,
   tiers: null,
   benefits: null,
@@ -154,6 +166,24 @@ export const useSessionStore = create<SessionState>()(
       // Switching plans keeps where you're searching.
       loadSamplePlan: (id = 'preferred') =>
         set((s) => ({ ...sampleSession(id), searchZip: s.searchZip, searchRadiusMiles: s.searchRadiusMiles })),
+
+      // A new patient at the desk: their plan and usage, nothing planned yet. The directory and
+      // where you're searching stay.
+      checkInMember: (member) =>
+        set((s) => {
+          const { plan, tiers, benefits } = memberPlan(member)
+          return {
+            ...EMPTY,
+            memberId: member.id,
+            plan,
+            tiers,
+            benefits,
+            providers: PROVIDERS,
+            messages: [greetingFor(benefits)],
+            searchZip: s.searchZip,
+            searchRadiusMiles: s.searchRadiusMiles,
+          }
+        }),
 
       setManualPlan: (input) => {
         // A plan year ends on planYearEnd and starts the day after the same date a year earlier.
@@ -251,9 +281,10 @@ export const useSessionStore = create<SessionState>()(
     }),
     {
       name: 'molarity-session',
+      // v8: sessions record which database member they price against (memberId).
       // v7: the Explore form's ZIP and radius are kept. v6: the directory adds Greensboro offices. v5: providers carry map coordinates. (v4: a default plan is loaded up front and the decode
       // chatbot keeps a transcript.) Older sessions start over.
-      version: 7,
+      version: 8,
       migrate: () => DEFAULT_SESSION as SessionState,
       storage: createJSONStorage(() => sessionStorage),
     },

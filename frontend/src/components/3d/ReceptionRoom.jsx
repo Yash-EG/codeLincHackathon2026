@@ -13,6 +13,7 @@ import {
 export const STOPS = [
   { id: "welcome",      ...view([-0.4, 0.9, -0.7], 8.2, 40, 24) },
   { id: "how-it-works", ...view([1.3, 0.6, -1.9], 4.6, 20, 18),  focus: "waiting" },
+  { id: "member",       ...view([-1.7, 0.95, 0.2], 3.6, 35, 20), focus: "desk" },
   { id: "check-in",     ...view([-1.7, 0.8, 0.2], 4.8, 50, 24), focus: "desk" },
   { id: "privacy",      ...view([-1.8, 1.0, 0.3], 4.4, 85, 30),  focus: "desk" },
   { id: "doors",        ...view([-2.0, 1.15, -2.4], 4.6, 15, 26), focus: "hallway" },
