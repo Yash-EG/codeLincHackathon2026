@@ -67,6 +67,11 @@ spring:
     url: ${DATABASE_URL}
     username: ${DATABASE_USERNAME}
     password: ${DATABASE_PASSWORD}
+    hikari:
+      # SQL run on every new connection. Defaults to a harmless no-op. Set DATABASE_INIT_SQL to pick a
+      # schema, e.g. "SET search_path TO molarity, public" (use a direct, non-pooled Neon host: the
+      # pooler ignores startup settings such as currentSchema).
+      connection-init-sql: ${DATABASE_INIT_SQL:SELECT 1}
 
   jpa:
     hibernate:
