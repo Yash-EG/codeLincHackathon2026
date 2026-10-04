@@ -87,7 +87,10 @@ export interface ExploreAnswers extends Selections {
   zip: string
 }
 
-export default function ExploreProcedureForm({ onContinue }: { onContinue?: (answers: ExploreAnswers) => void } = {}) {
+export default function ExploreProcedureForm({
+  onContinue,
+  busy = false,
+}: { onContinue?: (answers: ExploreAnswers) => void; busy?: boolean } = {}) {
   const [selections, setSelections] = useState<Selections>(EMPTY)
   const [zip, setZip] = useState('')
   const [errors, setErrors] = useState<Errors>({})
@@ -210,8 +213,8 @@ export default function ExploreProcedureForm({ onContinue }: { onContinue?: (ans
         )}
       </div>
 
-      <button type="submit" disabled={!complete} className={buttonPrimary}>
-        Continue <ArrowRight className="size-4" aria-hidden="true" />
+      <button type="submit" disabled={!complete || busy} className={buttonPrimary}>
+        {busy ? 'Pricing…' : <>Continue <ArrowRight className="size-4" aria-hidden="true" /></>}
       </button>
     </form>
   )

@@ -35,18 +35,24 @@ const upholstery = <Upholstery c="#7f998c" r={0.88} />;
 function DentalChair() {
   return (
     <group>
-      <ContactShadow w={0.95} d={1.65} p={[0, 0, 0.25]} o={0.55} />
-      <Box s={[0.5, 0.04, 1.0]} p={[0, 0.02, 0.2]} r={0.02}>{porcelain}</Box>
+      <ContactShadow w={1.15} d={1.8} p={[-0.1, 0, 0.25]} o={0.55} />
+      <Box s={[0.5, 0.04, 1.3]} p={[0, 0.02, 0.35]} r={0.02}>{porcelain}</Box>
+      {/* leg-rest support: from the base plate up under the foot end */}
+      <Rod from={[0, 0.04, 0.92]} to={[0, 0.42, 0.92]} r={0.035}>{chrome}</Rod>
+      {/* the cuspidor unit is bolted to the chair base, not standing apart */}
+      <Box s={[0.26, 0.04, 0.22]} p={[-0.37, 0.02, -0.12]} r={0.015}>{porcelain}</Box>
       <Box s={[0.34, 0.42, 0.42]} p={[0, 0.25, 0.05]} r={0.09}>{porcelain}</Box>
       <Box s={[0.6, 0.08, 0.6]} p={[0, 0.46, 0.08]} r={0.03}>{porcelain}</Box>
 
       <Box s={[0.56, 0.12, 0.56]} p={[0, 0.55, 0.1]} r={0.055}>{upholstery}</Box>
       <Box s={[0.5, 0.1, 0.78]} p={[0, 0.5, 0.74]} rot={[0.2, 0, 0]} r={0.05}>{upholstery}</Box>
       <Box s={[0.44, 0.16, 0.08]} p={[0, 0.38, 1.12]} r={0.03}>{porcelain}</Box>
-      <Box s={[0.54, 0.11, 0.74]} p={[0, 0.74, -0.48]} rot={[-0.5, 0, 0]} r={0.05}>{upholstery}</Box>
-      <Box s={[0.28, 0.08, 0.24]} p={[0, 1.0, -0.94]} rot={[-0.3, 0, 0]} r={0.04}>{upholstery}</Box>
+      <Box s={[0.54, 0.11, 0.74]} p={[0, 0.74, -0.48]} rot={[0.5, 0, 0]} r={0.05}>{upholstery}</Box>
+      <Box s={[0.28, 0.08, 0.24]} p={[0, 0.96, -0.94]} rot={[0.3, 0, 0]} r={0.04}>{upholstery}</Box>
+      {/* headrest joint */}
+      <Rod from={[0, 0.86, -0.78]} to={[0, 0.9, -0.9]} r={0.03}>{porcelain}</Rod>
       <Box s={[0.08, 0.06, 0.42]} p={[0.34, 0.7, 0.12]} r={0.025}>{porcelain}</Box>
-      <Rod from={[0.34, 0.5, 0.12]} to={[0.34, 0.68, 0.12]} r={0.02}>{porcelain}</Rod>
+      <Rod from={[0.3, 0.46, 0.12]} to={[0.34, 0.68, 0.12]} r={0.02}>{porcelain}</Rod>
 
       {/* assistant side: cuspidor post + bowl, light pole */}
       <Cyl a={[0.05, 0.06, 0.9, 20]} p={[-0.48, 0.45, -0.12]}>{porcelain}</Cyl>
@@ -82,7 +88,7 @@ function OperatorStool() {
   return (
     <group>
       <StarBase r={0.25} />
-      <Cyl a={[0.022, 0.026, 0.36, 16]} p={[0, 0.27, 0]}>{chrome}</Cyl>
+      <Cyl a={[0.022, 0.026, 0.38, 16]} p={[0, 0.28, 0]}>{chrome}</Cyl>
       <Cyl a={[0.21, 0.2, 0.08, 32]} p={[0, 0.5, 0]}>{upholstery}</Cyl>
       <Rod from={[0, 0.5, -0.17]} to={[0, 0.72, -0.2]} r={0.014}>{chrome}</Rod>
       <Box s={[0.3, 0.16, 0.06]} p={[0, 0.8, -0.2]} r={0.03}>{upholstery}</Box>
