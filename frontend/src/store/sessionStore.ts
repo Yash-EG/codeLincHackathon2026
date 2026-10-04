@@ -244,9 +244,9 @@ export const useSessionStore = create<SessionState>()(
     }),
     {
       name: 'molarity-session',
-      // v5: providers carry map coordinates. (v4: a default plan is loaded up front and the decode
+      // v6: the directory adds Greensboro offices. v5: providers carry map coordinates. (v4: a default plan is loaded up front and the decode
       // chatbot keeps a transcript.) Older sessions start over.
-      version: 5,
+      version: 6,
       migrate: () => DEFAULT_SESSION as SessionState,
       storage: createJSONStorage(() => sessionStorage),
     },

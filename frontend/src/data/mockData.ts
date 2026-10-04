@@ -203,10 +203,41 @@ export const SAMPLE_PLANS: Record<SamplePlanId, SamplePlan> = {
 
 /**
  * Provider directory for the sample plans (both Lincoln plans share one
- * network). Fictional offices and 555 numbers; in-network status is what the
+ * network). Fictional offices (real Greensboro and Columbus streets) and 555 numbers; in-network status is what the
  * plan would report. Mirrors a future `providers` API response.
  */
+/** Straight-line miles between two points (haversine), rounded to a tenth. */
+function milesBetween(a: [number, number], b: [number, number]): number {
+  const rad = (d: number) => (d * Math.PI) / 180
+  const h =
+    Math.sin(rad(b[0] - a[0]) / 2) ** 2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(rad(b[1] - a[1]) / 2) ** 2
+  return Math.round(3958.8 * 2 * Math.asin(Math.sqrt(h)) * 10) / 10
+}
+
+/** Where "near me" is for the Greensboro offices: downtown (27401). */
+const GREENSBORO_CENTER: [number, number] = [36.0726, -79.792]
+
+type GreensboroSeed = Omit<Provider, 'id' | 'city' | 'state' | 'distanceMiles'> & { id: string }
+const GREENSBORO_SEEDS: GreensboroSeed[] = [
+  { id: 'prov-g1', name: 'Dr. Naomi Carter, DDS', practiceName: 'Elm Street Family Dental', specialty: 'General dentistry', inNetwork: true, address: '301 S Elm St', zip: '27401', lat: 36.0708, lng: -79.7912, phone: '(336) 555-0121', acceptingNewPatients: true, rating: 4.8, reviewCount: 203 },
+  { id: 'prov-g2', name: 'Dr. Daniel Brooks, DMD', practiceName: 'Friendly Avenue Dental Care', specialty: 'General dentistry', inNetwork: true, address: '3300 Friendly Ave', zip: '27410', lat: 36.0975, lng: -79.8228, phone: '(336) 555-0147', acceptingNewPatients: true, rating: 4.7, reviewCount: 176 },
+  { id: 'prov-g3', name: 'Dr. Mei Lin, DDS', practiceName: 'Lawndale Endodontics', specialty: 'Endodontics (root canals)', inNetwork: true, address: '2200 Lawndale Dr', zip: '27408', lat: 36.1098, lng: -79.8084, phone: '(336) 555-0163', acceptingNewPatients: true, rating: 4.9, reviewCount: 92 },
+  { id: 'prov-g4', name: 'Dr. Andre Whitfield, DDS', practiceName: 'Piedmont Oral Surgery', specialty: 'Oral surgery', inNetwork: true, address: '1500 W Wendover Ave', zip: '27408', lat: 36.0742, lng: -79.8358, phone: '(336) 555-0188', acceptingNewPatients: false, rating: 4.7, reviewCount: 131 },
+  { id: 'prov-g5', name: 'Dr. Camila Ortiz, DMD', practiceName: 'Adams Farm Smiles', specialty: 'General dentistry', inNetwork: true, address: '5100 Lake Brandt Rd', zip: '27455', lat: 36.0182, lng: -79.8583, phone: '(336) 555-0204', acceptingNewPatients: true, rating: 4.6, reviewCount: 118 },
+  { id: 'prov-g6', name: 'Dr. Samuel Price, DDS', practiceName: 'Cone Boulevard Prosthodontics', specialty: 'Prosthodontics (crowns & implants)', inNetwork: true, address: '1900 Cone Blvd', zip: '27405', lat: 36.1118, lng: -79.7655, phone: '(336) 555-0231', acceptingNewPatients: true, rating: 4.8, reviewCount: 109 },
+  { id: 'prov-g7', name: 'Dr. Tara Nguyen, DMD', practiceName: 'Westover Modern Dentistry', specialty: 'General dentistry', inNetwork: false, address: '800 Westover Terrace', zip: '27408', lat: 36.0905, lng: -79.8472, phone: '(336) 555-0259', acceptingNewPatients: true, rating: 4.4, reviewCount: 64 },
+  { id: 'prov-g8', name: 'Dr. Leo Hartman, DDS', practiceName: 'Battleground Pediatric & Family Dental', specialty: 'General dentistry', inNetwork: false, address: '4600 Battleground Ave', zip: '27410', lat: 36.1312, lng: -79.8243, phone: '(336) 555-0284', acceptingNewPatients: true, rating: 4.9, reviewCount: 171 },
+]
+
+const GREENSBORO_PROVIDERS: Provider[] = GREENSBORO_SEEDS.map((seed) => ({
+  ...seed,
+  city: 'Greensboro',
+  state: 'NC',
+  distanceMiles: milesBetween(GREENSBORO_CENTER, [seed.lat!, seed.lng!]),
+}))
+
 export const PROVIDERS: Provider[] = [
+  ...GREENSBORO_PROVIDERS,
   { id: 'prov-1', name: 'Dr. Elena Marsh, DDS', practiceName: 'Riverside Family Dental', specialty: 'General dentistry', inNetwork: true, address: '812 Birchwood Ave', city: 'Columbus', state: 'OH', zip: '43215', distanceMiles: 1.2, lat: 39.9640, lng: -83.0220, phone: '(614) 555-0142', acceptingNewPatients: true, rating: 4.8, reviewCount: 212 },
   { id: 'prov-2', name: 'Dr. Priya Nair, DMD', practiceName: 'Downtown Dental Studio', specialty: 'General dentistry', inNetwork: true, address: '45 Market St, Suite 300', city: 'Columbus', state: 'OH', zip: '43215', distanceMiles: 2.6, lat: 40.0000, lng: -83.0020, phone: '(614) 555-0188', acceptingNewPatients: false, rating: 4.6, reviewCount: 164 },
   { id: 'prov-3', name: 'Dr. Marcus Lee, DDS', practiceName: 'Grandview Endodontics', specialty: 'Endodontics (root canals)', inNetwork: true, address: '1290 Grandview Rd', city: 'Grandview Heights', state: 'OH', zip: '43212', distanceMiles: 3.9, lat: 39.9950, lng: -83.0590, phone: '(614) 555-0210', acceptingNewPatients: true, rating: 4.9, reviewCount: 98 },

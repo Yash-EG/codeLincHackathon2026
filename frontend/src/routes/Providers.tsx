@@ -8,7 +8,7 @@ import RoomGate from '../components/RoomGate'
 import RoomIntro from '../components/RoomIntro'
 import SegmentedControl from '../components/SegmentedControl'
 import { buttonSecondary, eyebrow, fieldInput, textLink } from '../components/ui'
-import { hasCoordinates, mapToken } from '../lib/providerMap'
+import { AREAS, areaOf, hasCoordinates, mapToken, type AreaId } from '../lib/providerMap'
 import { ROOMS_BY_ID } from '../rooms'
 import { useSessionStore } from '../store/sessionStore'
 import { useViewMode } from '../store/settingsStore'
@@ -43,6 +43,7 @@ export default function Providers() {
 function ProviderDirectory() {
   const providers = useSessionStore((s) => s.providers)
   const plan = useSessionStore((s) => s.plan)
+  const [area, setArea] = useState<AreaId>('greensboro')
   const [network, setNetwork] = useState<NetworkFilter>('IN_NETWORK')
   const [specialty, setSpecialty] = useState<string>(ALL_SPECIALTIES)
   const [newPatientsOnly, setNewPatientsOnly] = useState(false)
@@ -56,11 +57,12 @@ function ProviderDirectory() {
   // The map needs a Mapbox token and WebGL. Without either, the page is just the list.
   const mapAvailable = useMemo(() => Boolean(mapToken()) && hasWebGL(), [])
 
-  const specialties = useMemo(() => Array.from(new Set(providers.map((p) => p.specialty))).sort(), [providers])
+  const inArea = useMemo(() => providers.filter((p) => areaOf(p) === area), [providers, area])
+  const specialties = useMemo(() => Array.from(new Set(inArea.map((p) => p.specialty))).sort(), [inArea])
 
   const results = useMemo(
     () =>
-      providers
+      inArea
         .filter((p) => (network === 'IN_NETWORK' ? p.inNetwork : true))
         .filter((p) => (specialty === ALL_SPECIALTIES ? true : p.specialty === specialty))
         .filter((p) => (newPatientsOnly ? p.acceptingNewPatients : true))
@@ -69,7 +71,7 @@ function ProviderDirectory() {
           if (a.inNetwork !== b.inNetwork) return a.inNetwork ? -1 : 1
           return a.distanceMiles - b.distanceMiles
         }),
-    [providers, network, specialty, newPatientsOnly],
+    [inArea, network, specialty, newPatientsOnly],
   )
 
   // A filter can hide the chosen dentist; then nothing is chosen.
@@ -116,6 +118,18 @@ function ProviderDirectory() {
         </p>
 
         <div className="space-y-5 border-t-2 border-primary/70 pt-5">
+          <SegmentedControl
+            legend="Area"
+            name="provider-area"
+            options={AREAS}
+            value={area}
+            onChange={(value) => {
+              setArea(value)
+              setSpecialty(ALL_SPECIALTIES)
+              setPinned(null)
+              announce(`Showing dentists in ${AREAS.find((a) => a.value === value)?.label}.`)
+            }}
+          />
           <SegmentedControl
             legend="Show"
             name="provider-network"

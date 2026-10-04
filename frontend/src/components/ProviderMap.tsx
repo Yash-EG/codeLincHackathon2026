@@ -39,10 +39,10 @@ function fitTo(map: mapboxgl.Map, providers: Provider[], animate: boolean) {
 }
 
 /**
- * An interactive map of the dentists in the list (Mapbox GL). In the 3D view it
- * is tilted, with 3D buildings and a slow rotation you can stop. In the
- * Traditional view, and under reduced motion, it is flat and still, and the
- * camera cuts instead of flying.
+ * An interactive 3D map of the dentists in the list (Mapbox GL): tilted, with 3D
+ * buildings, in both views. The slow rotation starts on in the 3D view and off in
+ * the Traditional view, and either way you can toggle it. Under reduced motion
+ * the map is flat and still, and the camera cuts instead of flying.
  *
  * It is an extra view of the list, never the only one: every pin is a real
  * <button>, and the list below carries the same information. Loaded lazily
@@ -57,11 +57,10 @@ export default function ProviderMap({ providers, selectedId, onSelect, onFail }:
   const descId = useId()
   const [ready, setReady] = useState(false)
   const [failed, setFailed] = useState(false)
-  const [rotating, setRotating] = useState(true)
-
   const reduced = useReducedMotion()
   const view = useViewMode()
-  const flat = view === 'traditional' || reduced
+  const [rotating, setRotating] = useState(view === 'immersive')
+  const flat = reduced
   const located = useMemo(() => providers.filter(hasCoordinates), [providers])
 
   // The latest props for the map's long-lived callbacks, so they never read stale values.
@@ -147,7 +146,7 @@ export default function ProviderMap({ providers, selectedId, onSelect, onFail }:
       map = new mapboxgl.Map({
         container: el,
         style: MAP_STYLE,
-        center: [-83.0, 40.0],
+        center: [-79.8, 36.08],
         zoom: 10,
         pitch: latest.current.flat ? 0 : TILT.pitch,
         bearing: latest.current.flat ? 0 : TILT.bearing,
@@ -180,7 +179,7 @@ export default function ProviderMap({ providers, selectedId, onSelect, onFail }:
         'source-layer': 'building',
         filter: ['==', 'extrude', 'true'],
         type: 'fill-extrusion',
-        minzoom: 13,
+        minzoom: 12,
         layout: { visibility: latest.current.flat ? 'none' : 'visible' },
         paint: {
           'fill-extrusion-color': '#d9d6cd',

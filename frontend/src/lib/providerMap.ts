@@ -9,6 +9,14 @@ export const MAP_STYLE = 'mapbox://styles/mapbox/light-v11'
 /** Camera for the tilted 3D view (the flat Traditional view and reduced motion use pitch 0). */
 export const TILT = { pitch: 55, bearing: -20 }
 
+/** The metro areas the directory covers. A provider belongs to the one whose state it is in. */
+export type AreaId = 'greensboro' | 'columbus'
+export const AREAS: Array<{ value: AreaId; label: string; state: string; center: [number, number] }> = [
+  { value: 'greensboro', label: 'Greensboro, NC', state: 'NC', center: [-79.8, 36.08] },
+  { value: 'columbus', label: 'Columbus, OH', state: 'OH', center: [-83.0, 40.0] },
+]
+export const areaOf = (p: Provider): AreaId => (p.state === 'NC' ? 'greensboro' : 'columbus')
+
 export type LngLat = [number, number]
 export type LngLatBounds = [LngLat, LngLat]
 
