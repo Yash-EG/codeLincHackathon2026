@@ -132,3 +132,23 @@ export interface ChatMessage {
   toothNumber?: number | null
   lineItems?: CostLineItem[]
 }
+
+/** A dentist/office the member can book, with their network status for this plan. */
+export interface Provider {
+  id: string
+  name: string
+  practiceName: string
+  specialty: string
+  /** Whether this provider is in the plan's network. */
+  inNetwork: boolean
+  address: string
+  city: string
+  state: string
+  zip: string
+  distanceMiles: number
+  phone: string
+  acceptingNewPatients: boolean
+  /** 0–5, one decimal. */
+  rating: number
+  reviewCount: number
+}

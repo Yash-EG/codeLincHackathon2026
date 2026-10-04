@@ -1,0 +1,72 @@
+spring:
+  application:
+    name: dental-backend
+
+  # The database layer (DataSource + JPA) is OPT-IN via the "db" profile. This
+  # lets the API — and /api/health, /api/ai/test — boot during early development
+  # before Neon credentials exist. Spring Data JPA and the Postgres driver stay
+  # on the classpath, ready for the teammate finalizing the schema.
+  #
+  # Run WITHOUT a database:   java -jar app.jar
+  # Run WITH Neon:            SPRING_PROFILES_ACTIVE=db java -jar app.jar
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
+
+server:
+  port: 8080
+
+# --- Application-specific configuration ---------------------------------------
+app:
+  # Amazon Bedrock. Region and model ID are centralized here, not hardcoded in
+  # Java. Overridable via BEDROCK_REGION / BEDROCK_MODEL_ID env vars if needed.
+  bedrock:
+    region: ${BEDROCK_REGION:us-east-2}
+    model-id: ${BEDROCK_MODEL_ID:us.amazon.nova-2-lite-v1:0}
+
+  # Centralized dev CORS. Comma-separated list; defaults to the Vite dev server.
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
+logging:
+  level:
+    com.codelinc.dental: INFO
+
+---
+# ===========================================================================
+# "db" profile: enable the database. Activate with SPRING_PROFILES_ACTIVE=db
+# once DATABASE_URL / DATABASE_USERNAME / DATABASE_PASSWORD are set.
+# ===========================================================================
+spring:
+  config:
+    activate:
+      on-profile: db
+
+  # Re-enable the auto-configuration excluded above by clearing the exclude list.
+  autoconfigure:
+    exclude:
+
+  # --- Database (Neon Postgres) ---------------------------------------------
+  # All values come from environment variables. NEVER commit a real connection
+  # string or credentials. See .env.example for the variable names.
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+
+  jpa:
+    hibernate:
+      # Do NOT let Hibernate create, drop, or alter the schema. The SQL under
+      # db/migrations/ owns it.
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  sql:
+    init:
+      # Don't run schema.sql/data.sql on startup; migrations are applied separately.
+      mode: never

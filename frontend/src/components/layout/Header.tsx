@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { useCssHeightVar } from '../../a11y/useCssHeightVar'
 import { useSessionStore } from '../../store/sessionStore'
 import Directory from './Directory'
+import PrimaryNav from './PrimaryNav'
 import ViewToggle from './ViewToggle'
 
 function ToothMark({ className }: { className?: string }) {
@@ -53,6 +54,7 @@ export default function Header() {
           <ViewToggle />
         </div>
       </div>
+      <PrimaryNav />
     </header>
   )
 }

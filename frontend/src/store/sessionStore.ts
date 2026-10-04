@@ -10,6 +10,7 @@ import {
   COVERAGE_TIERS,
   JARGON_TRANSLATIONS,
   PLAN,
+  PROVIDERS,
   TREATMENT_PLAN,
 } from '../data/mockData'
 import { daysUntil, formatUsd } from '../lib/format'
@@ -23,6 +24,7 @@ import type {
   JargonTranslation,
   NetworkTier,
   ProcedureRequest,
+  Provider,
   TreatmentPlanItem,
 } from '../types/domain'
 
@@ -49,6 +51,8 @@ export interface SessionData {
   /** Procedures being priced for this plan year (the cost breakdown). */
   procedures: ProcedureRequest[]
   translations: JargonTranslation[]
+  /** In-network and nearby out-of-network providers for the checked-in plan. */
+  providers: Provider[]
   network: NetworkTier
   selectedTooth: number | null
   messages: ChatMessage[]
@@ -75,6 +79,7 @@ const EMPTY: SessionData = {
   treatmentPlan: [],
   procedures: [],
   translations: [],
+  providers: [],
   network: 'IN_NETWORK',
   selectedTooth: null,
   messages: [],
@@ -122,6 +127,7 @@ export const useSessionStore = create<SessionState>()(
           treatmentPlan: TREATMENT_PLAN,
           procedures: requestsForPlanYear(TREATMENT_PLAN, BENEFIT_SUMMARY.planYearEnd),
           translations: JARGON_TRANSLATIONS,
+          providers: PROVIDERS,
           messages: [greetingFor(BENEFIT_SUMMARY)],
         }),
 

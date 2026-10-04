@@ -10,5 +10,11 @@ app:
   bedrock:
     region: us-east-2
     model-id: us.amazon.nova-2-lite-v1:0
+  education:
+    bedrock:
+      # Blank model id in tests: the service uses its deterministic fallback, so
+      # no AWS call is made. Service unit tests inject a mock model client directly.
+      enabled: true
+      model-id:
   cors:
     allowed-origins: http://localhost:5173

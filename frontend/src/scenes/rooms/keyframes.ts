@@ -39,13 +39,12 @@ const ROOM_KEYFRAMES: Record<RoomId, Record<string, CameraKeyframe>> = {
   },
   operatory: {
     intro: WIDE,
-    describe: k([2.9, 2.2, 3.0], [0.1, 0.8, 0.35]), // the dental chair
-    'tooth-map': k([1.3, 1.75, 1.0], [-2.7, 1.7, -0.8]), // the wall screen
+    explore: k([3.4, 2.6, 3.8], [0.0, 1.0, -0.6]), // the intake form, slightly wider than the chair
     planned: k([2.2, 1.9, 1.0], [0.8, 1.0, -2.3]), // cabinets and tray
-    missing: k([2.9, 2.2, 3.0], [0.1, 0.8, 0.35]),
   },
   imaging: {
     intro: WIDE,
+    ask: k([3.4, 2.6, 3.8], [0.0, 1.1, -0.6]), // the education chat panel, three-quarter view
     coverage: k([2.4, 2.0, 1.8], [0.2, 1.3, -2.0]), // the X-ray unit
     limits: k([1.1, 1.7, 0.9], [-2.7, 1.65, -0.9]), // the light box
     'fine-print': k([1.2, 1.7, 2.4], [-2.7, 1.4, 0.9]), // the apron rack
@@ -70,6 +69,13 @@ const ROOM_KEYFRAMES: Record<RoomId, Record<string, CameraKeyframe>> = {
     'annual-max': k([2.1, 1.4, 0.2], [1.41, 0.88, -0.97]), // the coin jar
     history: k([1.4, 1.8, 1.2], [-1.65, 0.75, -2.4]), // filing cabinets
     reminders: k([1.6, 1.7, 0.6], [0.75, 1.75, -2.7]), // cork board
+    missing: WIDE,
+  },
+  providers: {
+    intro: WIDE,
+    find: k([2.4, 2.1, 3.0], [-1.05, 0.85, -0.3]), // in on the referral desk
+    results: k([4.6, 3.0, 4.6], [1.2, 0.7, -2.0]), // across the waiting area
+    'no-directory': WIDE,
     missing: WIDE,
   },
 }

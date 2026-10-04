@@ -19,4 +19,6 @@ export const ROOM_SCENES: Record<RoomId, ComponentType> = {
   consult: ConsultScene,
   billing: BillingScene,
   records: RecordsScene,
+  // Providers reuses the Reception desk scene (a referral/front-desk setting).
+  providers: ReceptionScene,
 }
