@@ -5,6 +5,7 @@ import com.codelinc.dental.dto.ProcedureExplanationRequest;
 import com.codelinc.dental.dto.ProcedureExplanationResponse;
 import com.codelinc.dental.intent.DentalIntent;
 import com.codelinc.dental.intent.IntentExtractor;
+import com.codelinc.dental.service.BedrockIntentExtractor;
 import com.codelinc.dental.service.ProcedureExplanationService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,7 +34,8 @@ public class AiDevController {
     private final IntentExtractor intentExtractor;
     private final ProcedureExplanationService procedureExplanationService;
 
-    public AiDevController(IntentExtractor intentExtractor,
+    // Bedrock itself, not the analyzer's keyword fallback: this endpoint exists to test Bedrock.
+    public AiDevController(BedrockIntentExtractor intentExtractor,
                            ProcedureExplanationService procedureExplanationService) {
         this.intentExtractor = intentExtractor;
         this.procedureExplanationService = procedureExplanationService;

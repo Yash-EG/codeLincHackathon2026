@@ -52,6 +52,6 @@ public class EducationChatController {
 
     @PostMapping("/chat")
     public EducationChatResponse chat(@Valid @RequestBody EducationChatRequest request) {
-        return service.answer(request.message());
+        return service.answer(request.message(), request.memberId());
     }
 }

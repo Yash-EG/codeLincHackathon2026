@@ -25,8 +25,21 @@ public record PendingProcedure(
         String cdtCode,
 
         @Size(max = 128, message = "pending.procedureName must be at most 128 characters")
-        String procedureName
+        String procedureName,
+
+        // The tooth already given, so a confirming "yes" doesn't have to repeat it. Re-checked below.
+        Integer toothNumber
 ) {
+
+    /** A pending procedure with no tooth yet (the tooth is what is being asked for). */
+    public PendingProcedure(String cdtCode, String procedureName) {
+        this(cdtCode, procedureName, null);
+    }
+
+    /** The carried tooth, if it is a valid Universal tooth number (1 to 32); otherwise null. */
+    public Integer validToothNumber() {
+        return toothNumber != null && toothNumber >= 1 && toothNumber <= 32 ? toothNumber : null;
+    }
     /** True when this carry-over actually names a procedure (a non-blank CDT code). */
     public boolean hasProcedure() {
         return cdtCode != null && !cdtCode.isBlank();

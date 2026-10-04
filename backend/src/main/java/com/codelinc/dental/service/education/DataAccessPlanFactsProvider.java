@@ -58,8 +58,18 @@ public class DataAccessPlanFactsProvider implements PlanFactsProvider {
 
     @Override
     public Optional<PlanFacts> currentPlanFacts() {
-        // Resolve the (demo) member's active plan from trusted data. No plan -> no facts.
-        Optional<PlanContext> planOpt = data.findActivePlan(demoMemberId);
+        return planFactsFor(demoMemberId);
+    }
+
+    /**
+     * Facts for the employee checked in at Reception (their id is the analyzer's userId), so the
+     * chatbot and the estimates describe the same plan. Blank falls back to the demo member.
+     */
+    @Override
+    public Optional<PlanFacts> planFactsFor(String memberId) {
+        String member = memberId == null || memberId.isBlank() ? demoMemberId : memberId.trim();
+        // Resolve the member's active plan from trusted data. No plan -> no facts.
+        Optional<PlanContext> planOpt = data.findActivePlan(member);
         if (planOpt.isEmpty()) {
             return Optional.empty();
         }

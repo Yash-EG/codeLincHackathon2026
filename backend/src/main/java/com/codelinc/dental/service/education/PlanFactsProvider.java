@@ -24,4 +24,14 @@ public interface PlanFactsProvider {
      *         available or facts could not be verified. Never fabricated.
      */
     Optional<PlanFacts> currentPlanFacts();
+
+    /**
+     * Verified plan facts for a specific employee (the one checked in at Reception). Providers that
+     * can't look a member up fall back to {@link #currentPlanFacts()}. Never fabricated.
+     *
+     * @param memberId the employee's user id; blank or {@code null} means the current member
+     */
+    default Optional<PlanFacts> planFactsFor(String memberId) {
+        return currentPlanFacts();
+    }
 }

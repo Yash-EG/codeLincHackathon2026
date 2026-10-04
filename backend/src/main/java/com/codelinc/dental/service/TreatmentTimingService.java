@@ -64,11 +64,12 @@ public class TreatmentTimingService {
         }
 
         BigDecimal remaining = usage.remainingAnnualMaximum();
+        // The maximum resets the day after the plan year ends (the end date is its last day).
         String message = "Doing all of this in " + benefitYear + " would waste about "
-                + overMaximum.toPlainString() + " of plan payment, because only "
-                + remaining.toPlainString() + " of your annual maximum is left and it resets on "
-                + plan.benefitYearEnd() + ". Scheduling part of the work after the reset would let a "
-                + "fresh annual maximum cover more of it.";
+                + usd(overMaximum) + " of plan payment, because only "
+                + usd(remaining) + " of your annual maximum is left. It resets on "
+                + plan.benefitYearEnd().plusDays(1) + ", so scheduling part of the work after that would let "
+                + "a fresh annual maximum cover more of it.";
 
         return Optional.of(new TimingGuidance(
                 benefitYear,
@@ -88,5 +89,9 @@ public class TreatmentTimingService {
             }
         }
         return max;
+    }
+
+    private static String usd(BigDecimal amount) {
+        return "$" + amount.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
     }
 }

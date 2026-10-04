@@ -73,6 +73,12 @@ export interface SessionData {
    * user in db/migrations/V2; checking someone in at Reception sets it to their id.
    */
   memberId: string
+  /**
+   * Where the checked-in plan came from. "default" is the sample plan everyone starts with: when the
+   * member database is reachable it is swapped for the demo employee's real plan (useDefaultMember),
+   * so what the site shows is the plan the estimates are priced against.
+   */
+  planSource: 'default' | 'sample' | 'manual' | 'member'
   plan: InsurancePlan | null
   tiers: Record<CoverageClass, CoverageTier> | null
   benefits: BenefitSummary | null
@@ -131,6 +137,7 @@ export type SessionState = SessionData & SessionActions
 
 const EMPTY: SessionData = {
   memberId: DEMO_MEMBER_ID,
+  planSource: 'manual',
   plan: null,
   tiers: null,
   benefits: null,
@@ -174,11 +181,12 @@ function sampleSession(id: SamplePlanId): SessionData {
     translations: sample.translations,
     providers: PROVIDERS,
     messages: [greetingFor(sample.benefits)],
+    planSource: 'sample',
   }
 }
 
 /** Everyone starts with a plan already loaded, so there's no setup step before the rest of the site. */
-const DEFAULT_SESSION = sampleSession('preferred')
+const DEFAULT_SESSION: SessionData = { ...sampleSession('preferred'), planSource: 'default' }
 
 export const useSessionStore = create<SessionState>()(
   persist(
@@ -197,6 +205,7 @@ export const useSessionStore = create<SessionState>()(
           return {
             ...EMPTY,
             memberId: member.id,
+            planSource: 'member',
             plan,
             tiers,
             benefits,
@@ -305,10 +314,11 @@ export const useSessionStore = create<SessionState>()(
     {
       name: 'molarity-session',
       // v8: the Operatory Explore answers are kept so the chatbot can include them as context.
+      // v9: sessions record where their plan came from (planSource).
       // v8: sessions record which database member they price against (memberId).
       // v7: the Explore form's ZIP and radius are kept. v6: the directory adds Greensboro offices. v5: providers carry map coordinates. (v4: a default plan is loaded up front and the decode
       // chatbot keeps a transcript.) Older sessions start over.
-      version: 8,
+      version: 9,
       migrate: () => DEFAULT_SESSION as SessionState,
       storage: createJSONStorage(() => sessionStorage),
     },

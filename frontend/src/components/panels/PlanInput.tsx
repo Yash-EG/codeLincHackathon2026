@@ -40,10 +40,11 @@ const isSample = (method: Method): method is SamplePlanId => method === 'preferr
  * keyboard and screen-reader users never lose their place.
  */
 export default function PlanInput() {
-  const { plan, benefits, loadSamplePlan, setManualPlan, updateBenefits } = useSessionStore(
+  const { plan, benefits, planSource, loadSamplePlan, setManualPlan, updateBenefits } = useSessionStore(
     useShallow((s) => ({
       plan: s.plan,
       benefits: s.benefits,
+      planSource: s.planSource,
       loadSamplePlan: s.loadSamplePlan,
       setManualPlan: s.setManualPlan,
       updateBenefits: s.updateBenefits,
@@ -70,6 +71,9 @@ export default function PlanInput() {
 
   if (plan && benefits && !changing) {
     const left = Math.max(benefits.remainingMaximum, 0)
+    // An employee from the member database: the numbers are their record, and the estimates are
+    // priced on it, so they aren't edited here and "another plan" means another employee.
+    const fromDatabase = planSource === 'member'
     return (
       <Panel id="check-in" eyebrow="Plan details" title="Your plan">
         <p ref={summaryRef} tabIndex={-1} className="font-serif text-2xl leading-tight text-ink">
@@ -92,29 +96,41 @@ export default function PlanInput() {
           <SummaryRow label="Plan year ends" value={formatLongDate(benefits.planYearEnd)} />
           <SummaryRow label="Days left" value={String(benefits.daysRemaining)} />
         </dl>
-        <AdjustNumbers
-          key={`${benefits.annualMaximum}-${benefits.usedToDate}`}
-          annualMaximum={benefits.annualMaximum}
-          usedToDate={benefits.usedToDate}
-          onSave={(patch) => {
-            updateBenefits(patch)
-            announce('Plan numbers updated.')
-          }}
-        />
+        {fromDatabase ? (
+          <p className="text-sm text-ink-muted">
+            From the member database. Cost estimates are priced on this plan and this year&rsquo;s usage.
+          </p>
+        ) : (
+          <AdjustNumbers
+            key={`${benefits.annualMaximum}-${benefits.usedToDate}`}
+            annualMaximum={benefits.annualMaximum}
+            usedToDate={benefits.usedToDate}
+            onSave={(patch) => {
+              updateBenefits(patch)
+              announce('Plan numbers updated.')
+            }}
+          />
+        )}
         <div className="flex flex-wrap gap-3">
           <Link to="/imaging#ask" className={buttonPrimary}>
             Next: decode your plan <ArrowRight className="size-4" aria-hidden="true" />
           </Link>
-          <button
-            type="button"
-            className={buttonSecondary}
-            onClick={() => {
-              setChanging(true)
-              setFocusAfter('options')
-            }}
-          >
-            Use a different plan
-          </button>
+          {fromDatabase ? (
+            <Link to="#member" className={buttonSecondary}>
+              Check in someone else
+            </Link>
+          ) : (
+            <button
+              type="button"
+              className={buttonSecondary}
+              onClick={() => {
+                setChanging(true)
+                setFocusAfter('options')
+              }}
+            >
+              Use a different plan
+            </button>
+          )}
         </div>
       </Panel>
     )

@@ -31,12 +31,16 @@ export interface EducationChatResponse {
   source: 'backend'
 }
 
-/** Ask the education chatbot (Amazon Bedrock via the backend). Throws if the backend can't answer. */
-export async function askEducation(message: string): Promise<EducationChatResponse> {
+/**
+ * Ask the education chatbot (Amazon Bedrock via the backend). Throws if the backend can't answer.
+ * memberId is the employee checked in at Reception, so "have I met my deductible?" is answered from
+ * their plan, the same one the estimates use.
+ */
+export async function askEducation(message: string, memberId?: string): Promise<EducationChatResponse> {
   const res = await apiFetch('/api/education/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify(memberId ? { message, memberId } : { message }),
   })
   if (!res.ok) throw new Error(await errorMessage(res))
   const data = (await res.json()) as Omit<EducationChatResponse, 'source'>

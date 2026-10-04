@@ -3,6 +3,7 @@ package com.codelinc.dental.service;
 import com.codelinc.dental.dto.AnalysisResponse;
 import com.codelinc.dental.dto.BenefitEstimate;
 import com.codelinc.dental.dto.PendingProcedure;
+import com.codelinc.dental.intent.ConversationText;
 import com.codelinc.dental.intent.DentalIntent;
 import com.codelinc.dental.intent.DentalIntentType;
 import com.codelinc.dental.intent.IntentExtractor;
@@ -96,6 +97,8 @@ public class AnalysisService {
         DentalIntent intent = intentExtractor.interpret(message);
 
         boolean hasPending = pending != null && pending.hasProcedure();
+        // Rule-based parsing (the tooth) reads only the question itself, never the context preamble.
+        String question = ConversationText.currentQuestion(message);
 
         // When there is no resumable context, an unsupported intent is a dead end -> clarify.
         // When we DO have pending context, a bare follow-up like "19" legitimately parses as
@@ -114,6 +117,9 @@ public class AnalysisService {
         // 1. Resolve the procedure. Prefer a fresh procedure named in THIS message; otherwise fall
         //    back to the pending procedure carried from the previous clarification.
         ResolvedProcedure procedure;
+        // True when this turn continues the pending procedure (a tooth number, or "yes" to estimate an
+        // unconfirmed recommendation): the recommendation check already ran on the earlier turn.
+        boolean resumed = false;
         if (ref != null && !isBlank(ref.spokenName())) {
             ProcedureResolution resolution = data.resolveProcedure(ref.spokenName());
             switch (resolution.outcome()) {
@@ -134,9 +140,13 @@ public class AnalysisService {
                 case RESOLVED -> procedure = resolution.procedure();
                 default -> procedure = null;
             }
+            // The AI re-reading the context may name the pending procedure again; that is still a resume.
+            resumed = hasPending && procedure != null && procedure.cdtCode() != null
+                    && procedure.cdtCode().equals(pending.cdtCode());
         } else if (hasPending) {
             // Re-validate the pending procedure against trusted data rather than trusting the echo.
             procedure = resolvePending(pending);
+            resumed = procedure != null;
             if (procedure == null) {
                 // The echoed procedure no longer resolves — start over cleanly.
                 return AnalysisResponse.ofClarification(
@@ -157,23 +167,30 @@ public class AnalysisService {
         }
         PlanContext plan = planOpt.get();
 
-        // 3. If the user claims this was recommended, confirm it against trusted appointment data.
-        if (intent != null && intent.claimsRecommendation()
+        // 3. The tooth: from this message's intent, or a bare number ("19", "#19", "tooth 19") in the
+        //    question itself, or the one carried from the previous turn.
+        Integer tooth = (ref != null) ? ref.toothNumber() : null;
+        if (tooth == null) {
+            tooth = parseToothNumber(question);
+        }
+        if (tooth == null && resumed) {
+            tooth = pending.validToothNumber();
+        }
+
+        // 4. If the user claims this was recommended, confirm it against trusted appointment data.
+        //    When it isn't on file, say so and carry the procedure and tooth, so "yes" continues.
+        if (!resumed && intent != null && intent.claimsRecommendation()
                 && !recommendationConfirmed(userId, procedure.cdtCode())) {
             return AnalysisResponse.ofClarification(
                     "I don't see a recent appointment where a " + procedure.canonicalName()
-                            + " was recommended. I can still estimate it if you'd like — just confirm "
-                            + "you want a cost estimate for a " + procedure.canonicalName() + ".");
+                            + " was recommended. I can still estimate it if you'd like: reply \"yes\" "
+                            + "and I'll price the " + procedure.canonicalName() + ".",
+                    new PendingProcedure(procedure.cdtCode(), procedure.canonicalName(), tooth));
         }
 
-        // 4. Tooth-specific procedures need a tooth number. Take it from this message's intent, or
-        //    parse a bare number ("19", "#19", "tooth 19") from the follow-up text. If still missing,
-        //    ask — but attach the resolved procedure as pending so the client can echo it back and
-        //    the user does NOT have to restate it.
-        Integer tooth = (ref != null) ? ref.toothNumber() : null;
-        if (tooth == null) {
-            tooth = parseToothNumber(message);
-        }
+        // 5. Tooth-specific procedures need a tooth number. If it's still missing, ask, but attach the
+        //    resolved procedure as pending so the client can echo it back and the user does NOT have
+        //    to restate it.
         if (procedure.isToothSpecific() && tooth == null) {
             PendingProcedure carry =
                     new PendingProcedure(procedure.cdtCode(), procedure.canonicalName());
@@ -183,7 +200,7 @@ public class AnalysisService {
                     carry);
         }
 
-        // 5. Derive the benefit year from the enrollment window + today — never hard-coded.
+        // 6. Derive the benefit year from the enrollment window + today — never hard-coded.
         int benefitYear = deriveBenefitYear(plan);
 
         ProcedureCharge charge = new ProcedureCharge(

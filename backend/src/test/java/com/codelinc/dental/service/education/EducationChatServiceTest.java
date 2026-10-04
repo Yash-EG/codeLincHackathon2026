@@ -187,4 +187,16 @@ class EducationChatServiceTest {
         assertThat(r.intent()).isEqualTo(EducationIntent.OUT_OF_SCOPE);
         assertThat(r.estimateHandoff()).isFalse();
     }
+
+    @Test
+    void howMuchOfMyMaximumIsLeftIsAboutTheBalanceNotAPrice() {
+        // "How much" used to send this to the estimate handoff, so the employee's numbers were never used.
+        assertThat(service(NO_FACTS, MODEL_OFF).answer("How much of my annual maximum is left?").intent())
+                .isEqualTo(EducationIntent.PERSONAL_PLAN_QUESTION);
+        assertThat(service(NO_FACTS, MODEL_OFF).answer("Have I hit my deductible yet?").intent())
+                .isEqualTo(EducationIntent.PERSONAL_PLAN_QUESTION);
+        // A price question naming a procedure still goes to the estimate tool.
+        assertThat(service(NO_FACTS, MODEL_OFF).answer("How much will a crown cost me?").intent())
+                .isEqualTo(EducationIntent.ESTIMATE_REQUEST);
+    }
 }
