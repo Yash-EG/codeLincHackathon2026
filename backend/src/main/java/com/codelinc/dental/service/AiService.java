@@ -8,6 +8,12 @@ import com.codelinc.dental.dto.BenefitEstimate;
  * <p>Controllers and future business services depend on this interface, not on the
  * AWS SDK directly, so the Bedrock implementation can evolve (or be swapped/mocked)
  * without touching callers.
+ *
+ * <p>This stays a single-abstract-method interface ({@link #generateText(String)}),
+ * with {@link #explainEstimate(BenefitEstimate)} as a default, so it can be used as a
+ * functional interface (lambdas/fakes) in tests. The system-prompted structured call
+ * used by intent extraction lives on {@link StructuredAiService} instead, to keep this
+ * contract minimal.
  */
 public interface AiService {
 
