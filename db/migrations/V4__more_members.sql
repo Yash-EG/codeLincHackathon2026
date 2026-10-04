@@ -8,6 +8,10 @@
 --
 -- Everything is synthetic (example.com addresses, made-up names). Plan and user
 -- ids are looked up by name/email, never hard-coded, because ids are IDENTITY.
+--
+-- Safe to run twice (these files are applied by hand with psql): every insert
+-- skips rows that are already there, so a second run changes nothing. Without
+-- that, a rerun that kept going past the first error would duplicate usage.
 -- [PLACEHOLDER] dollar amounts follow the same placeholder rules as V2.
 -- =============================================================================
 
@@ -17,7 +21,8 @@
 INSERT INTO dental_plans
     (name, annual_maximum, deductible, plan_year_start, plan_year_end, major_waiting_period_months)
 VALUES
-    ('Demo PPO Plus', 2000.00, 50.00, '2026-01-01', '2026-12-31', 0);
+    ('Demo PPO Plus', 2000.00, 50.00, '2026-01-01', '2026-12-31', 0)
+ON CONFLICT (name) DO NOTHING;
 
 -- In-network: preventive 100%, basic 90%, major 60%.
 -- Out-of-network: preventive 80%, basic 70%, major 50%.
@@ -34,7 +39,8 @@ CROSS JOIN (
         ('BASIC',      'OUT_OF_NETWORK',  70.00, true),
         ('MAJOR',      'OUT_OF_NETWORK',  50.00, true)
 ) AS v(category, network_type, pct, deductible_applies)
-WHERE p.name = 'Demo PPO Plus';
+WHERE p.name = 'Demo PPO Plus'
+ON CONFLICT (plan_id, category, network_type) DO NOTHING;
 
 -- -----------------------------------------------------------------------------
 -- Employees.
@@ -48,7 +54,8 @@ FROM (
         ('sam.okafor@example.com',   'Sam Okafor',   'Demo PPO'),
         ('lena.fischer@example.com', 'Lena Fischer', 'Demo PPO Plus')
 ) AS v(email, full_name, plan_name)
-JOIN dental_plans p ON p.name = v.plan_name;
+JOIN dental_plans p ON p.name = v.plan_name
+ON CONFLICT (email) DO NOTHING;
 
 -- -----------------------------------------------------------------------------
 -- 2026 usage. plan_paid follows each plan's coverage after the $50 deductible.
@@ -78,4 +85,12 @@ FROM (
         ('lena.fischer@example.com', 'Extraction', '2026-07-29', 'IN_NETWORK',      205.00,  139.50,  65.50, 50.00)
 ) AS v(email, procedure_name, service_date, network_type, billed, plan_paid, patient_paid, deductible)
 JOIN users u ON u.email = v.email
-JOIN procedures pr ON pr.name = v.procedure_name;
+JOIN procedures pr ON pr.name = v.procedure_name
+-- benefit_usage has no natural key, so skip a visit that is already recorded.
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM benefit_usage x
+    WHERE x.user_id = u.id
+      AND x.procedure_id = pr.id
+      AND x.service_date = v.service_date::DATE
+);

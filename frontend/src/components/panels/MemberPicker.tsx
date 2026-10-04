@@ -83,7 +83,7 @@ export default function MemberPicker() {
               ? 'The member list needs the database. Start the backend with the db profile (SPRING_PROFILES_ACTIVE=db).'
               : `Couldn't load the member list. ${load.message}`}
           </p>
-          <p className="text-sm text-ink-muted">The sample plan below stays loaded in the meantime.</p>
+          <p className="text-sm text-ink-muted">The plan checked in below stays loaded in the meantime.</p>
           <button type="button" onClick={() => setAttempt((n) => n + 1)} className={buttonSecondary}>
             <RotateCcw className="size-4" aria-hidden="true" />
             Try again
