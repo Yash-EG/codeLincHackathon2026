@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./traditional.css";
 
 /*
  * Warm, health-focused theme: cream canvas, charcoal type, teal for actions and

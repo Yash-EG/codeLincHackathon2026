@@ -154,7 +154,7 @@ page scroll (no `<ScrollControls>`).
 - **3D office (immersive):** text sits on frosted panels; as you scroll, the camera
   holds on the object each section is about, then glides to the next. Changing room
   flies the camera through a door.
-- **Traditional:** the 3D code is never downloaded; panels are solid with no motion.
+- **Traditional:** the 3D code is never downloaded. The same pages as a plain, solid document: a rail with every room and this page's sections, one readable column (about 70 characters a line), sections as bands under hairlines, a footer. No glass, shadows, parallax or motion; 17px text; high-contrast and print styles. The layout lives in `frontend/src/traditional.css`.
   Turns on automatically for reduced-motion or when WebGL is unavailable. Either view
   can be picked in the header.
 
