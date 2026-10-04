@@ -2,6 +2,7 @@ package com.codelinc.dental.controller;
 
 import com.codelinc.dental.dto.AnalysisResponse;
 import com.codelinc.dental.dto.BenefitEstimate;
+import com.codelinc.dental.dto.PendingProcedure;
 import com.codelinc.dental.model.NetworkTier;
 import com.codelinc.dental.service.AnalysisService;
 import org.junit.jupiter.api.Test;
@@ -53,7 +54,7 @@ class AnalysisControllerTest {
         AnalysisResponse estimateResponse =
                 AnalysisResponse.ofEstimates(List.of(in, out), "Crown comparison.");
 
-        when(analysisService.analyze(eq("1"), eq("crown in vs out?")))
+        when(analysisService.analyze(eq("1"), eq("crown in vs out?"), eq(null)))
                 .thenReturn(estimateResponse);
 
         mockMvc.perform(post("/api/analyze")
@@ -71,7 +72,7 @@ class AnalysisControllerTest {
 
     @Test
     void returnsClarificationWhenServiceAsksAQuestion() throws Exception {
-        when(analysisService.analyze(eq("1"), eq("huh?")))
+        when(analysisService.analyze(eq("1"), eq("huh?"), eq(null)))
                 .thenReturn(AnalysisResponse.ofClarification("Which procedure do you mean?"));
 
         mockMvc.perform(post("/api/analyze")
@@ -81,6 +82,43 @@ class AnalysisControllerTest {
                 .andExpect(jsonPath("$.kind").value("CLARIFICATION"))
                 .andExpect(jsonPath("$.clarificationQuestion").value("Which procedure do you mean?"))
                 .andExpect(jsonPath("$.estimates.length()").value(0));
+    }
+
+    @Test
+    void bindsPendingAndForwardsItToTheService() throws Exception {
+        BenefitEstimate in = new BenefitEstimate(
+                "D2740", "Crown", 19, NetworkTier.IN_NETWORK,
+                new BigDecimal("1400.00"), new BigDecimal("1400.00"),
+                new BigDecimal("600.00"), new BigDecimal("800.00"),
+                BigDecimal.ZERO, new BigDecimal("100.00"), BigDecimal.ZERO,
+                "Your plan pays 600 in network.");
+        when(analysisService.analyze(
+                eq("1"), eq("19"), eq(new PendingProcedure("D2740", "Crown"))))
+                .thenReturn(AnalysisResponse.ofEstimates(List.of(in), "Crown comparison."));
+
+        mockMvc.perform(post("/api/analyze")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":\"1\",\"message\":\"19\","
+                                + "\"pending\":{\"cdtCode\":\"D2740\",\"procedureName\":\"Crown\"}}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.kind").value("ESTIMATE"))
+                .andExpect(jsonPath("$.estimates[0].toothNumber").value(19));
+    }
+
+    @Test
+    void serializesPendingOnAClarificationResponse() throws Exception {
+        when(analysisService.analyze(eq("1"), eq("crown"), eq(null)))
+                .thenReturn(AnalysisResponse.ofClarification(
+                        "A Crown is billed per tooth. Which tooth is it (for example #19)?",
+                        new PendingProcedure("D2740", "Crown")));
+
+        mockMvc.perform(post("/api/analyze")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":\"1\",\"message\":\"crown\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.kind").value("CLARIFICATION"))
+                .andExpect(jsonPath("$.pending.cdtCode").value("D2740"))
+                .andExpect(jsonPath("$.pending.procedureName").value("Crown"));
     }
 
     @Test

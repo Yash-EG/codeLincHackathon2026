@@ -2,6 +2,7 @@ package com.codelinc.dental.service;
 
 import com.codelinc.dental.dto.AnalysisResponse;
 import com.codelinc.dental.dto.BenefitEstimate;
+import com.codelinc.dental.dto.PendingProcedure;
 import com.codelinc.dental.intent.DentalIntent;
 import com.codelinc.dental.intent.DentalIntentType;
 import com.codelinc.dental.intent.IntentExtractor;
@@ -69,52 +70,85 @@ public class AnalysisService {
     }
 
     /**
+     * Convenience overload for a fresh conversation with no carried-over context. Equivalent to
+     * {@link #analyze(String, String, PendingProcedure)} with a {@code null} pending.
+     *
+     * @param userId  the id of the user asking
+     * @param message the natural-language question
+     * @return an {@link AnalysisResponse} carrying estimates or a clarification
+     */
+    public AnalysisResponse analyze(String userId, String message) {
+        return analyze(userId, message, null);
+    }
+
+    /**
      * Analyze a user's message and return either structured estimate(s) or a clarification question.
      *
      * @param userId  the id of the user asking (plan/usage are loaded for this user, never supplied
      *                by the client)
      * @param message the natural-language question
+     * @param pending optional prior-turn context echoed from a previous clarification (e.g. the
+     *                procedure resolved last turn while we waited on a tooth number); {@code null} on
+     *                a fresh conversation
      * @return an {@link AnalysisResponse} carrying estimates or a clarification
      */
-    public AnalysisResponse analyze(String userId, String message) {
+    public AnalysisResponse analyze(String userId, String message, PendingProcedure pending) {
         DentalIntent intent = intentExtractor.interpret(message);
 
-        if (intent == null || intent.type() == null || intent.type() == DentalIntentType.UNSUPPORTED) {
+        boolean hasPending = pending != null && pending.hasProcedure();
+
+        // When there is no resumable context, an unsupported intent is a dead end -> clarify.
+        // When we DO have pending context, a bare follow-up like "19" legitimately parses as
+        // UNSUPPORTED (it names no procedure), so we don't bail here — we merge below instead.
+        if (!hasPending
+                && (intent == null || intent.type() == null
+                    || intent.type() == DentalIntentType.UNSUPPORTED)) {
             return AnalysisResponse.ofClarification(
                     "I can estimate the cost of a specific procedure, including an in- vs "
                             + "out-of-network comparison. Could you tell me which procedure you mean "
                             + "and what you'd like to know?");
         }
 
-        // 1. We need a procedure reference to act on anything.
-        ProcedureReference ref = intent.procedure();
-        if (ref == null || isBlank(ref.spokenName())) {
+        ProcedureReference ref = intent == null ? null : intent.procedure();
+
+        // 1. Resolve the procedure. Prefer a fresh procedure named in THIS message; otherwise fall
+        //    back to the pending procedure carried from the previous clarification.
+        ResolvedProcedure procedure;
+        if (ref != null && !isBlank(ref.spokenName())) {
+            ProcedureResolution resolution = data.resolveProcedure(ref.spokenName());
+            switch (resolution.outcome()) {
+                case UNKNOWN -> {
+                    return AnalysisResponse.ofClarification(
+                            "I couldn't match \"" + ref.spokenName() + "\" to a dental procedure. "
+                                    + "Could you describe it the way your dentist did?");
+                }
+                case AMBIGUOUS -> {
+                    String names = resolution.candidates().stream()
+                            .map(ResolvedProcedure::canonicalName)
+                            .reduce((a, b) -> a + ", " + b)
+                            .orElse("a few options");
+                    return AnalysisResponse.ofClarification(
+                            "\"" + ref.spokenName() + "\" could mean a few things (" + names
+                                    + "). Which did you mean?");
+                }
+                case RESOLVED -> procedure = resolution.procedure();
+                default -> procedure = null;
+            }
+        } else if (hasPending) {
+            // Re-validate the pending procedure against trusted data rather than trusting the echo.
+            procedure = resolvePending(pending);
+            if (procedure == null) {
+                // The echoed procedure no longer resolves — start over cleanly.
+                return AnalysisResponse.ofClarification(
+                        "Which procedure are you asking about? For example a crown, filling, or "
+                                + "cleaning.");
+            }
+        } else {
             return AnalysisResponse.ofClarification(
                     "Which procedure are you asking about? For example a crown, filling, or cleaning.");
         }
 
-        // 2. Resolve the spoken term against TRUSTED catalog data (never the AI's guessed code).
-        ProcedureResolution resolution = data.resolveProcedure(ref.spokenName());
-        switch (resolution.outcome()) {
-            case UNKNOWN -> {
-                return AnalysisResponse.ofClarification(
-                        "I couldn't match \"" + ref.spokenName() + "\" to a dental procedure. "
-                                + "Could you describe it the way your dentist did?");
-            }
-            case AMBIGUOUS -> {
-                String names = resolution.candidates().stream()
-                        .map(ResolvedProcedure::canonicalName)
-                        .reduce((a, b) -> a + ", " + b)
-                        .orElse("a few options");
-                return AnalysisResponse.ofClarification(
-                        "\"" + ref.spokenName() + "\" could mean a few things (" + names
-                                + "). Which did you mean?");
-            }
-            case RESOLVED -> { /* fall through */ }
-        }
-        ResolvedProcedure procedure = resolution.procedure();
-
-        // 3. The user's active plan is required for pricing; it also defines the benefit year.
+        // 2. The user's active plan is required for pricing; it also defines the benefit year.
         Optional<PlanContext> planOpt = data.findActivePlan(userId);
         if (planOpt.isEmpty()) {
             return AnalysisResponse.ofClarification(
@@ -123,23 +157,33 @@ public class AnalysisService {
         }
         PlanContext plan = planOpt.get();
 
-        // 4. If the user claims this was recommended, confirm it against trusted appointment data.
-        if (intent.claimsRecommendation() && !recommendationConfirmed(userId, procedure.cdtCode())) {
+        // 3. If the user claims this was recommended, confirm it against trusted appointment data.
+        if (intent != null && intent.claimsRecommendation()
+                && !recommendationConfirmed(userId, procedure.cdtCode())) {
             return AnalysisResponse.ofClarification(
                     "I don't see a recent appointment where a " + procedure.canonicalName()
                             + " was recommended. I can still estimate it if you'd like — just confirm "
                             + "you want a cost estimate for a " + procedure.canonicalName() + ".");
         }
 
-        // 5. Tooth-specific procedures need a tooth number to price honestly.
-        Integer tooth = ref.toothNumber();
+        // 4. Tooth-specific procedures need a tooth number. Take it from this message's intent, or
+        //    parse a bare number ("19", "#19", "tooth 19") from the follow-up text. If still missing,
+        //    ask — but attach the resolved procedure as pending so the client can echo it back and
+        //    the user does NOT have to restate it.
+        Integer tooth = (ref != null) ? ref.toothNumber() : null;
+        if (tooth == null) {
+            tooth = parseToothNumber(message);
+        }
         if (procedure.isToothSpecific() && tooth == null) {
+            PendingProcedure carry =
+                    new PendingProcedure(procedure.cdtCode(), procedure.canonicalName());
             return AnalysisResponse.ofClarification(
                     "A " + procedure.canonicalName() + " is billed per tooth. Which tooth is it "
-                            + "(for example #19)?");
+                            + "(for example #19)?",
+                    carry);
         }
 
-        // 6. Derive the benefit year from the enrollment window + today — never hard-coded.
+        // 5. Derive the benefit year from the enrollment window + today — never hard-coded.
         int benefitYear = deriveBenefitYear(plan);
 
         ProcedureCharge charge = new ProcedureCharge(
@@ -148,6 +192,45 @@ public class AnalysisService {
         // The analyzer always answers with an in- vs out-of-network comparison — the app's core
         // feature. (Scope kept tight for the hackathon: no separate single-network path.)
         return buildComparison(userId, plan, procedure, charge, benefitYear);
+    }
+
+    /**
+     * Re-resolve an echoed {@link PendingProcedure} against trusted catalog data by its canonical
+     * name, so a client echo can never inject an untrusted procedure. Returns the trusted
+     * {@link ResolvedProcedure} (carrying the authoritative tooth-specific flag), or {@code null} if
+     * it no longer resolves to exactly one catalog entry.
+     */
+    private ResolvedProcedure resolvePending(PendingProcedure pending) {
+        if (pending == null || isBlank(pending.procedureName())) {
+            return null;
+        }
+        ProcedureResolution resolution = data.resolveProcedure(pending.procedureName());
+        if (resolution.outcome() != ProcedureResolution.Outcome.RESOLVED) {
+            return null;
+        }
+        ResolvedProcedure resolved = resolution.procedure();
+        // Guard: the echoed CDT code must match the one trusted resolution produces.
+        if (pending.hasProcedure() && !pending.cdtCode().equals(resolved.cdtCode())) {
+            return null;
+        }
+        return resolved;
+    }
+
+    /**
+     * Parse a Universal tooth number (1–32) from free text such as {@code "19"}, {@code "#19"}, or
+     * {@code "tooth 19"}. Returns {@code null} if no valid tooth number is present. Deliberately
+     * strict: only matches a 1–2 digit number in range, so prices/years in a sentence aren't
+     * mistaken for a tooth.
+     */
+    static Integer parseToothNumber(String message) {
+        if (message == null) {
+            return null;
+        }
+        // (?<!\d) / (?!\d) ensure the matched 1–32 value isn't part of a longer digit run, so
+        // "33" or "190" never partial-match to a valid tooth number.
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("#?(?<!\\d)([1-9]|[12]\\d|3[0-2])(?!\\d)").matcher(message);
+        return m.find() ? Integer.valueOf(m.group(1)) : null;
     }
 
     private AnalysisResponse buildComparison(String userId,

@@ -54,6 +54,12 @@ export interface BackendTimingGuidance {
   message: string
 }
 
+/** Mirrors dto/PendingProcedure.java — prior-turn context echoed across turns. */
+export interface PendingProcedure {
+  cdtCode: string
+  procedureName: string
+}
+
 /** Mirrors dto/AnalysisResponse.java. */
 export interface AnalysisResponse {
   kind: AnalysisKind
@@ -61,12 +67,15 @@ export interface AnalysisResponse {
   summary: string | null
   clarificationQuestion: string | null
   timing: BackendTimingGuidance | null
+  pending: PendingProcedure | null
 }
 
 /** Mirrors dto/AnalyzeRequest.java. */
 export interface AnalyzeRequest {
   userId: string
   message: string
+  /** Optional prior-turn context echoed back so a bare follow-up (e.g. "19") resolves. */
+  pending?: PendingProcedure | null
 }
 
 /** The analyzer result adapted to the UI's existing shapes. */
@@ -82,6 +91,11 @@ export interface AnalyzeResult {
   analysis: AiAnalysis | null
   /** Optional timing guidance, passed through for any UI that wants to show it. */
   timing: BackendTimingGuidance | null
+  /**
+   * Prior-turn context to echo back on the next request. Present on a resumable
+   * CLARIFICATION (e.g. "which tooth?") so the user need not restate the procedure.
+   */
+  pending: PendingProcedure | null
 }
 
 // --- API call ---------------------------------------------------------------
@@ -115,6 +129,7 @@ export function adaptAnalysis(data: AnalysisResponse): AnalyzeResult {
       requests: [],
       analysis: null,
       timing: null,
+      pending: data.pending ?? null,
     }
   }
 
@@ -138,6 +153,7 @@ export function adaptAnalysis(data: AnalysisResponse): AnalyzeResult {
     requests,
     analysis: buildAiAnalysis(lineItems, explanation, data.timing),
     timing: data.timing,
+    pending: null,
   }
 }
 

@@ -33,7 +33,8 @@ public record AnalysisResponse(
         List<BenefitEstimate> estimates,
         String summary,
         String clarificationQuestion,
-        TimingGuidance timing
+        TimingGuidance timing,
+        PendingProcedure pending
 ) {
     /** Which of the two mutually exclusive outcomes an {@link AnalysisResponse} carries. */
     public enum Kind {
@@ -51,7 +52,7 @@ public record AnalysisResponse(
      * @return an {@link Kind#ESTIMATE} response
      */
     public static AnalysisResponse ofEstimates(List<BenefitEstimate> estimates, String summary) {
-        return new AnalysisResponse(Kind.ESTIMATE, List.copyOf(estimates), summary, null, null);
+        return new AnalysisResponse(Kind.ESTIMATE, List.copyOf(estimates), summary, null, null, null);
     }
 
     /**
@@ -62,7 +63,7 @@ public record AnalysisResponse(
      * @return a copy carrying {@code timing}
      */
     public AnalysisResponse withTiming(TimingGuidance timing) {
-        return new AnalysisResponse(kind, estimates, summary, clarificationQuestion, timing);
+        return new AnalysisResponse(kind, estimates, summary, clarificationQuestion, timing, pending);
     }
 
     /**
@@ -72,6 +73,19 @@ public record AnalysisResponse(
      * @return a {@link Kind#CLARIFICATION} response
      */
     public static AnalysisResponse ofClarification(String question) {
-        return new AnalysisResponse(Kind.CLARIFICATION, List.of(), null, question, null);
+        return new AnalysisResponse(Kind.CLARIFICATION, List.of(), null, question, null, null);
+    }
+
+    /**
+     * Builds a clarification response that is <em>resumable</em>: it asks a question but also carries
+     * the already-resolved {@link PendingProcedure} so the client can echo it back and let a bare
+     * follow-up (e.g. a tooth number) be merged with the remembered procedure.
+     *
+     * @param question the plain-English clarification question
+     * @param pending  the procedure resolved so far, to be echoed back on the next request
+     * @return a {@link Kind#CLARIFICATION} response carrying {@code pending}
+     */
+    public static AnalysisResponse ofClarification(String question, PendingProcedure pending) {
+        return new AnalysisResponse(Kind.CLARIFICATION, List.of(), null, question, null, pending);
     }
 }
