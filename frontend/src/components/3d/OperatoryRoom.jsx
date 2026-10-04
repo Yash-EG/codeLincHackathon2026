@@ -35,8 +35,12 @@ const upholstery = <Upholstery c="#7f998c" r={0.88} />;
 function DentalChair() {
   return (
     <group>
-      <ContactShadow w={0.95} d={1.65} p={[0, 0, 0.25]} o={0.55} />
-      <Box s={[0.5, 0.04, 1.0]} p={[0, 0.02, 0.2]} r={0.02}>{porcelain}</Box>
+      <ContactShadow w={1.15} d={1.8} p={[-0.1, 0, 0.25]} o={0.55} />
+      <Box s={[0.5, 0.04, 1.3]} p={[0, 0.02, 0.35]} r={0.02}>{porcelain}</Box>
+      {/* leg-rest support: from the base plate up under the foot end */}
+      <Rod from={[0, 0.04, 0.92]} to={[0, 0.42, 0.92]} r={0.035}>{chrome}</Rod>
+      {/* the cuspidor unit is bolted to the chair base, not standing apart */}
+      <Box s={[0.26, 0.04, 0.22]} p={[-0.37, 0.02, -0.12]} r={0.015}>{porcelain}</Box>
       <Box s={[0.34, 0.42, 0.42]} p={[0, 0.25, 0.05]} r={0.09}>{porcelain}</Box>
       <Box s={[0.6, 0.08, 0.6]} p={[0, 0.46, 0.08]} r={0.03}>{porcelain}</Box>
 
