@@ -50,7 +50,12 @@ export async function fetchMembers(signal?: AbortSignal): Promise<Member[]> {
     throw new MembersError(0, 'The server could not be reached.')
   }
   if (!res.ok) {
-    let message = `The server answered ${res.status}.`
+    // A bare 5xx with no JSON body is a proxy or gateway talking (Vite answers 500 when the
+    // backend isn't running), not the backend itself.
+    let message =
+      res.status >= 500
+        ? `The backend didn't answer (HTTP ${res.status}). Check that it's running.`
+        : `The server answered ${res.status}.`
     try {
       const body = (await res.json()) as { message?: unknown }
       if (typeof body.message === 'string' && body.message) message = body.message
