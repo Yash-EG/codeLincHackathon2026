@@ -4,7 +4,7 @@
  * Preview:  <RoomPreview Room={OperatoryRoom} stops={STOPS} />
  */
 import {
-  C, tex, Mat, Box, Cyl, Rod, OnWall, RoomShell, Door, WallArt, WallMonitor, Clipboard, Sanitizer,
+  C, tex, Mat, Box, Cyl, Plane, Rod, OnWall, RoomShell, Door, Clock, Poster, SignBoard, WallMonitor, Clipboard, Sanitizer,
   GlassCabinet, CoinJar, JawModel, Molar, SnakePlant, Succulent, StarBase, Pickable,
   Chrome, Porcelain, Upholstery, ContactShadow, view,
 } from "./roomKit";
@@ -80,6 +80,35 @@ function DentalChair() {
       <Box s={[0.24, 0.012, 0.14]} p={[0.72, 0.912, 0.14]}>
         <Chrome c="#dce2e6" r={0.18} />
       </Box>
+    </group>
+  );
+}
+
+/** Wall-mounted glove dispenser: a chrome rack holding three labelled boxes (S, M, L). */
+function GloveDispenser() {
+  const sizes = ["S", "M", "L"];
+  return (
+    <group>
+      <Box s={[0.52, 0.16, 0.012]} p={[0, 0, 0.006]}>
+        <Chrome r={0.3} />
+      </Box>
+      <Box s={[0.52, 0.012, 0.12]} p={[0, -0.075, 0.06]}>
+        <Chrome r={0.3} />
+      </Box>
+      {sizes.map((size, i) => (
+        <group key={size} position={[(i - 1) * 0.165, 0, 0.062]}>
+          <Box s={[0.15, 0.13, 0.1]} r={0.006}>
+            <Mat c="#e6edf5" r={0.6} />
+          </Box>
+          <Plane s={[0.13, 0.06]} p={[0, 0.02, 0.0505]}>
+            <Mat map={tex.sign(`GLOVES ${size}`, "#e6edf5", "#2f6fb3", 2.17)} r={0.6} />
+          </Plane>
+          {/* the opening, with a glove poking out */}
+          <Box s={[0.08, 0.02, 0.004]} p={[0, -0.03, 0.051]} r={0.008}>
+            <Mat c="#9fb8d6" r={0.5} />
+          </Box>
+        </group>
+      ))}
     </group>
   );
 }
@@ -176,6 +205,12 @@ export default function OperatoryRoom({ highlight, openDoor, onSelect, jarFill =
       <OnWall wall="left" u={2.0} y={1.25}>
         <Sanitizer />
       </OnWall>
+      <OnWall wall="left" u={1.97} y={1.62}>
+        <SignBoard text="CLEAN HANDS, EVERY TIME" w={0.46} h={0.08} fg={C.maroon} />
+      </OnWall>
+      <OnWall wall="left" u={0.9} y={2.66}>
+        <SignBoard text="TREATMENT ROOM 4" w={1.1} h={0.2} fg="#2f6fb3" />
+      </OnWall>
       <OnWall wall="left" u={-0.15} y={1.45}>
         <Clipboard />
       </OnWall>
@@ -197,8 +232,30 @@ export default function OperatoryRoom({ highlight, openDoor, onSelect, jarFill =
           </Pickable>
         </group>
       </OnWall>
+      <OnWall wall="back" u={-0.78} y={1.88}>
+        <Poster
+          title="Healthy habits"
+          lines={["Brush twice a day, two minutes each time", "Floss once a day", "A check-up and cleaning every six months"]}
+          footer="Small habits, smaller bills"
+          w={0.6}
+          h={0.82}
+        />
+      </OnWall>
       <OnWall wall="back" u={0.55} y={1.95}>
-        <WallArt w={0.58} h={0.8} />
+        <Poster
+          title="Know your coverage"
+          lines={["Preventive: exams, cleanings, X-rays", "Basic: fillings, root canals", "Major: crowns, bridges, implants"]}
+          footer="Ask what your plan pays"
+          w={0.6}
+          h={0.82}
+          accent="#2f6fb3"
+        />
+      </OnWall>
+      <OnWall wall="back" u={1.55} y={2.38}>
+        <Clock r={0.16} />
+      </OnWall>
+      <OnWall wall="back" u={1.5} y={1.32}>
+        <GloveDispenser />
       </OnWall>
 
       <group position={[0.95, 0, -2.21]}>
