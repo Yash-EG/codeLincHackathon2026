@@ -9,6 +9,7 @@ import { useLineItems, useNextYearPlan, useToothHistory, useToothStatus } from '
 import { useSessionStore } from '../../store/sessionStore'
 import { announce, useUiStore } from '../../store/uiStore'
 import type { AiAnalysis } from '../../types/domain'
+import ExploreProcedureForm, { type ExploreAnswers } from '../ExploreProcedureForm'
 import Panel from '../Panel'
 import ToothInspector from '../ToothInspector'
 import ToothPicker from '../ToothPicker'
@@ -16,16 +17,31 @@ import { buttonPrimary, fieldInput, textLink } from '../ui'
 
 type ReplySource = 'describe' | 'tooth'
 
+/** Explore-form procedures, phrased the way the assistant reads them ("unsure" has none). */
+const EXPLORE_PHRASE: Record<string, string> = {
+  cleaning: 'Cleaning',
+  filling: 'Filling',
+  crown: 'Crown',
+  'root-canal': 'Root canal',
+  extraction: 'Extraction',
+}
+
 /**
- * The Operatory's panels (the dental chair in 3D): describe the care in your own
- * words, or pick a tooth, and get the assistant's analysis: what it is, what it
- * costs in- and out-of-network, and the order to do it in.
+ * The Operatory's panels (the dental chair in 3D): explore a procedure step by
+ * step, describe the care in your own words, or pick a tooth, and get the
+ * assistant's analysis: what it is, what it costs in- and out-of-network, and
+ * the order to do it in.
  */
 export default function TreatmentMap() {
   const ask = useAssistant()
   const isThinking = useUiStore((s) => s.isThinking)
-  const { selectedTooth, selectTooth, aiAnalysis } = useSessionStore(
-    useShallow((s) => ({ selectedTooth: s.selectedTooth, selectTooth: s.selectTooth, aiAnalysis: s.aiAnalysis })),
+  const { selectedTooth, selectTooth, aiAnalysis, setProcedureInput } = useSessionStore(
+    useShallow((s) => ({
+      selectedTooth: s.selectedTooth,
+      selectTooth: s.selectTooth,
+      aiAnalysis: s.aiAnalysis,
+      setProcedureInput: s.setProcedureInput,
+    })),
   )
   const toothStatus = useToothStatus()
   const history = useToothHistory(selectedTooth)
@@ -39,8 +55,22 @@ export default function TreatmentMap() {
     announce(result.content)
   }
 
+  // The explore form's answer becomes the starting point for "Describe your care".
+  function explore(answers: ExploreAnswers) {
+    const phrase = EXPLORE_PHRASE[answers.procedure]
+    if (!phrase) return
+    const text = selectedTooth != null ? `${phrase} on tooth #${selectedTooth}` : phrase
+    setProcedureInput(text)
+    announce(`Added "${text}" to Describe your care. Choose Price it to see the cost.`)
+  }
+
   return (
     <>
+      <Panel id="explore" title="Explore a procedure">
+        <p>Not sure how to describe it? Answer a few quick questions and we&rsquo;ll start the description for you.</p>
+        <ExploreProcedureForm onContinue={explore} />
+      </Panel>
+
       <Panel id="describe" title="Describe your care">
         <DescribeForm busy={isThinking} toothNumber={selectedTooth} onSubmit={(text) => void run(text, 'describe')} />
         {reply?.source === 'describe' && <ReplyBox text={reply.text} />}
