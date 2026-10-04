@@ -12,6 +12,7 @@ import {
 /** One stop per content <section> on /operatory, framed tight on its focal object (fov 24). */
 export const STOPS = [
   { id: "intro",     ...view([-0.4, 1.0, -0.8], 6.5, 42, 22) },
+  { id: "explore",   ...view([-0.3, 0.9, -0.4], 5.0, 34, 20),  focus: "chair" },
   { id: "describe",  ...view([-0.3, 0.85, -0.3], 3.6, 50, 24), focus: "chair" },
   { id: "tooth-map", ...view([-2.95, 1.8, -1.0], 2.6, 80, 8),  focus: "monitor" },
   { id: "planned",   ...view([0.9, 1.0, -2.0], 3.4, 20, 18) },

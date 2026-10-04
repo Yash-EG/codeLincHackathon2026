@@ -23,7 +23,7 @@ The site is a dental office you walk through, one route per room. **The HTML is 
 | `/` | Entrance | Landing page |
 | `/reception` | Reception | Check in a plan (sample or manual entry) |
 | `/hallway` | Hallway | Every room, as door cards |
-| `/operatory` | Operatory | Describe care in words, or pick a tooth from the tooth buttons |
+| `/operatory` | Operatory | Explore a procedure (guided), describe care in words, or pick a tooth |
 | `/imaging` | Imaging | Coverage tiers, frequency limits, fine print in plain English |
 | `/consult` | Consult office | What to do this plan year vs. after Jan 1 |
 | `/billing` | Billing | What you pay, line items, in- vs out-of-network |
