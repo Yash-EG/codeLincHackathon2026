@@ -76,7 +76,7 @@ export const STATION_PANNING_CONFIG = {
    3. Seamless Door Swing & Camera Timeline Configuration
    ========================================================================= */
 export const DOOR_SWING_TIMELINE_CONFIG = {
-  totalDuration: 2.15,
+  totalDuration: 1.7,
   timeUnit: 'seconds' as const,
 
   /**
@@ -87,12 +87,12 @@ export const DOOR_SWING_TIMELINE_CONFIG = {
    * max(closeAt, swap + closeAfterSwap), then runs closeAt -> closeEnd.
    */
   camera: {
-    flyStart: 0.2,
-    flyEnd: 2.0,
-    holdOpen: 1.0,
-    closeAt: 1.6,
-    closeAfterSwap: 0.5,
-    closeEnd: 2.15,
+    flyStart: 0.05, // the camera sets off almost with the click; the door is already swinging
+    flyEnd: 1.6,
+    holdOpen: 0.6,
+    closeAt: 1.2,
+    closeAfterSwap: 0.3,
+    closeEnd: 1.7,
   },
 
   keyframes: [
@@ -262,8 +262,8 @@ export function mapStationPanning(progress: number) {
  */
 export function getDoorTimelineState(t: number) {
   const { flyStart, flyEnd, closeAt, closeEnd } = DOOR_SWING_TIMELINE_CONFIG.camera;
-  const OPEN_START = 0.05;
-  const OPEN_END = 0.75;
+  const OPEN_START = 0.0;
+  const OPEN_END = 0.45;
   const OPEN_RAD = -1.25;
 
   // 1. Plaque light: quick ramp up, on while the door is in use, fades as it closes.

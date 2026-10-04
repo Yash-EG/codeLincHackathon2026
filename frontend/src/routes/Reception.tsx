@@ -2,6 +2,7 @@ import { ArrowRight } from 'lucide-react'
 import { Link } from 'react-router'
 import DoorCard from '../components/DoorCard'
 import Panel from '../components/Panel'
+import MemberPicker from '../components/panels/MemberPicker'
 import PlanInput from '../components/panels/PlanInput'
 import RoomIntro from '../components/RoomIntro'
 import { buttonPrimary, buttonSecondary, textLink } from '../components/ui'
@@ -58,6 +59,8 @@ export default function Reception() {
           </li>
         </ol>
       </Panel>
+
+      <MemberPicker />
 
       <PlanInput />
 

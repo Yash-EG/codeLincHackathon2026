@@ -104,6 +104,8 @@ export function useAssistant() {
       // Remember the backend's pending context for the next turn (set on a resumable
       // clarification, cleared once we get an estimate or an unresumable answer).
       pendingContext = result.pending
+      // Priced against the member checked in at Reception (the demo user until someone is).
+      const result = await analyze({ userId: session.memberId, message: text + toothSuffix })
       const store = useSessionStore.getState()
       store.appendMessage({ id: nextId('msg'), role: 'assistant', content: result.content, lineItems: result.lineItems })
       if (result.requests.length > 0) store.addProcedures(result.requests)

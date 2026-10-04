@@ -17,6 +17,7 @@ calculator**. The AI never does math and never invents plan details.
 | `migrations/V1__schema.sql` | Core schema: `users`, `dental_plans`, `plan_coverage`, `procedures`, `benefit_usage`. |
 | `migrations/V2__seed_data.sql` | Demo seed: Demo PPO plan, coverage rows, 9 canonical procedures, demo user 1 with $900 used / deductible met. |
 | `migrations/V3__appointments.sql` | `appointments` + `appointment_procedures` (status + nullable urgency) and demo user 1's last appointment. |
+| `migrations/V4__more_members.sql` | A second plan (Demo PPO Plus, with coverage rows) and four more fictional employees with 2026 usage, for the Reception member list (`GET /api/members`). |
 | `queries.sql` | One verification query per required question (Q1–Q9). |
 
 Files follow the **Flyway** naming convention `V<n>__<name>.sql` and are applied
@@ -61,6 +62,7 @@ PSQL="psql postgresql://<user>:<pw>@<host>/<db>?sslmode=require"
 $PSQL -v ON_ERROR_STOP=1 -f db/migrations/V1__schema.sql
 $PSQL -v ON_ERROR_STOP=1 -f db/migrations/V2__seed_data.sql
 $PSQL -v ON_ERROR_STOP=1 -f db/migrations/V3__appointments.sql
+$PSQL -v ON_ERROR_STOP=1 -f db/migrations/V4__more_members.sql
 
 # Verify
 $PSQL -f db/queries.sql

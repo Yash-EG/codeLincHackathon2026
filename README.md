@@ -109,6 +109,7 @@ db/
     V1__schema.sql            tables: users, dental_plans, plan_coverage, procedures, benefit_usage
     V2__seed_data.sql         demo seed: "Demo PPO" plan, 9 canonical procedures, demo user 1
     V3__appointments.sql      appointments + appointment_procedures (+ demo user 1's last visit)
+    V4__more_members.sql      a second plan and four more fictional employees with 2026 usage
   queries.sql                 one verification query per required question (Q1–Q9)
   README.md                   database-layer documentation (owner: Gopal)
 frontend/
@@ -268,7 +269,16 @@ All under `/api`. Only contracts actually in the controllers are listed.
 | `POST /api/ai/intent` | dev: classify a message into `DentalIntent` | Bedrock |
 | `POST /api/ai/explain-procedure` | dev: plain-language procedure explanation | Bedrock |
 | `POST /api/analyze` | estimate + in/out-network comparison, or a clarification | Bedrock + `db` profile + seed |
+| `GET /api/members` | employees for the Reception check-in: plan, coverage and this year's usage (503 without `db`) | `db` profile + seed |
 | `POST /api/education/chat` | benefits-education answer | nothing (model optional) |
+
+Member list (Reception's "Who's checking in?"; the `id` is the `userId` for `/api/analyze`):
+
+```bash
+curl http://localhost:8080/api/members
+# [{"id":"5","fullName":"Jordan Reyes","planName":"Demo PPO Plus","annualMaximum":2000.00,
+#   "usedThisYear":1710.00,"remainingMaximum":290.00,"deductibleMet":50.00,"coverage":[...], ...}, ...]
+```
 
 Health:
 
@@ -331,6 +341,7 @@ connection string:
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/V1__schema.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/V2__seed_data.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/V3__appointments.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/V4__more_members.sql
 ```
 
 Schema notes:
