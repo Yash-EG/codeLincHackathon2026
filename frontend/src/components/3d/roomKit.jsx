@@ -685,6 +685,70 @@ function drawInterior(g, w, h) {
   g.globalAlpha = 1;
 }
 
+/** Lines of text that fit in maxW, broken at spaces. */
+function wrapText(g, text, maxW) {
+  const out = [];
+  let line = "";
+  for (const word of text.split(" ")) {
+    const next = line ? `${line} ${word}` : word;
+    if (line && g.measureText(next).width > maxW) {
+      out.push(line);
+      line = word;
+    } else line = next;
+  }
+  if (line) out.push(line);
+  return out;
+}
+/** A printed wall poster: accent rule, serif title, numbered lines between hairlines, small footer. */
+function drawPoster(g, w, h, title, lines, accent, footer) {
+  const ink = "#2f3740";
+  const pad = w * 0.09;
+  g.fillStyle = "#fbf9f4";
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = accent;
+  g.fillRect(pad, pad, w * 0.16, Math.max(4, h * 0.01));
+  g.textAlign = "left";
+  g.textBaseline = "top";
+
+  let y = pad + h * 0.035;
+  const titleSize = Math.round(w * 0.1);
+  g.fillStyle = ink;
+  g.font = `500 ${titleSize}px Georgia, "Times New Roman", serif`;
+  for (const l of wrapText(g, title, w - 2 * pad)) {
+    g.fillText(l, pad, y);
+    y += titleSize * 1.12;
+  }
+  y += titleSize * 0.5;
+
+  const size = Math.round(w * 0.056);
+  const textX = pad + size * 2.1;
+  lines.forEach((text, i) => {
+    g.strokeStyle = "rgba(47, 55, 64, 0.28)";
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(pad, y);
+    g.lineTo(w - pad, y);
+    g.stroke();
+    y += size * 0.75;
+    g.fillStyle = accent;
+    g.font = `600 ${size}px ui-monospace, Menlo, monospace`;
+    g.fillText(String(i + 1).padStart(2, "0"), pad, y);
+    g.fillStyle = ink;
+    g.font = `500 ${size}px system-ui, sans-serif`;
+    for (const l of wrapText(g, text, w - pad - textX)) {
+      g.fillText(l, textX, y);
+      y += size * 1.3;
+    }
+    y += size * 0.45;
+  });
+
+  if (footer) {
+    const fs = Math.round(w * 0.038);
+    g.fillStyle = "rgba(47, 55, 64, 0.62)";
+    g.font = `600 ${fs}px ui-monospace, Menlo, monospace`;
+    g.fillText(footer.toUpperCase(), pad, h - pad - fs);
+  }
+}
 function drawSign(g, w, h, text, bg, fg) {
   g.fillStyle = bg;
   g.fillRect(0, 0, w, h);
@@ -745,6 +809,10 @@ export const tex = {
   concrete: (rx = 3, ry = 3) => cached(`concrete:${rx}:${ry}`, () => canvasTexture(256, 256, drawConcrete, { repeat: [rx, ry] })),
   grass: (rx = 3, ry = 3) => cached(`grass:${rx}:${ry}`, () => canvasTexture(256, 256, drawGrass, { repeat: [rx, ry] })),
   interior: () => cached("interior", () => canvasTexture(256, 256, drawInterior)),
+  /** A printed poster (see drawPoster). aspect = width / height. */
+  poster: (title, lines, accent = "#8a3b3b", footer = "", aspect = 0.75) =>
+    cached(`poster:${title}:${lines.join("|")}:${accent}:${footer}:${aspect}`, () =>
+      canvasTexture(512, Math.round(512 / aspect), (g, w, h) => drawPoster(g, w, h, title, lines, accent, footer))),
   /** Text on a colored board. aspect = width / height. */
   sign: (text, bg = "#ffffff", fg = "#2f3740", aspect = 4) =>
     cached(`sign:${text}:${bg}:${fg}:${aspect}`, () => canvasTexture(512, Math.round(512 / aspect), (g, w, h) => drawSign(g, w, h, text, bg, fg))),
@@ -1270,6 +1338,20 @@ export function WallArt({ w = 0.62, h = 0.85 }) {
 }
 
 /** Wall sign with lettering. Mount with <OnWall>; children face +z. */
+/** A framed poster with real text: a title, numbered lines and an optional footer. */
+export function Poster({ title, lines = [], footer = "", w = 0.6, h = 0.8, accent = C.maroon }) {
+  const map = tex.poster(title, lines, accent, footer, +(w / h).toFixed(3));
+  return (
+    <group>
+      <Box s={[w + 0.04, h + 0.04, 0.025]} p={[0, 0, 0.0125]} r={0.004}>
+        <Mat c="#3a4048" r={0.45} />
+      </Box>
+      <Plane s={[w - 0.02, h - 0.02]} p={[0, 0, 0.026]}>
+        <Mat map={map} r={0.8} />
+      </Plane>
+    </group>
+  );
+}
 export function SignBoard({ text, w = 1, h = 0.25, bg = "#ffffff", fg = "#2f3740" }) {
   const map = tex.sign(text, bg, fg, +(w / h).toFixed(2));
   return (
