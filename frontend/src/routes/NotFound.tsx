@@ -7,8 +7,8 @@ export default function NotFound() {
     <RoomIntro
       room={{ name: 'Room not found', description: 'There’s no room at this address. The directory lists every room in the office.' }}
     >
-      <Link to="/hallway" className={buttonPrimary}>
-        Go to the hallway
+      <Link to="/" className={buttonPrimary}>
+        Back to the entrance
       </Link>
     </RoomIntro>
   )

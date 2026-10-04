@@ -149,7 +149,8 @@ export default function ExploreProcedureForm({ onContinue }: { onContinue?: (ans
     )
   }
 
-  const errorCount = Object.keys(errors).length
+  // Answering a question clears its error by setting it to undefined, so count only the errors still set.
+  const errorCount = Object.values(errors).filter(Boolean).length
   const zipError = errors.zip
 
   return (

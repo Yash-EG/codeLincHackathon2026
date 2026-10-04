@@ -41,8 +41,8 @@ export interface DecodeChatMessage {
   text: string
   /** ISO 8601. */
   timestamp: string
-  /** Where an assistant answer came from: your plan's numbers, the backend, or the offline glossary. */
-  source?: 'plan' | 'backend' | 'offline'
+  /** Where an assistant answer came from: your plan's numbers, the backend, or an error when it was unreachable. */
+  source?: 'plan' | 'backend' | 'error'
   /** 'context': the co-pilot reacting to a form (a tooth picked, a plan switched), not to a question. */
   kind?: 'context'
 }

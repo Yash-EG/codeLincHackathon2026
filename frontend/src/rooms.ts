@@ -1,6 +1,7 @@
 // The building directory: one entry per route. Navigation, door cards, page
 // titles and screen-reader arrival announcements all read from this list.
 
+/** 'hallway' has no page of its own; it's still the 3D office's default room (404s, door fly-throughs). */
 export type RoomId = 'entrance' | 'reception' | 'hallway' | 'operatory' | 'imaging' | 'consult' | 'billing' | 'records' | 'providers'
 
 /** What a room needs before it has anything to show. Doors still work; they say what's missing. */
@@ -36,13 +37,6 @@ export const ROOMS: Room[] = [
     description:
       'A bright waiting room with a curved front desk. Your plan is already loaded: adjust the numbers or switch plans here.',
     requirement: 'Plan details',
-  },
-  {
-    id: 'hallway',
-    path: '/hallway',
-    name: 'Hallway',
-    purpose: 'Choose a room.',
-    description: 'A hallway of doors with a directory sign. Every room in the office is listed here.',
   },
   {
     id: 'imaging',

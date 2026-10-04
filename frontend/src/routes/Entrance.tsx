@@ -2,7 +2,7 @@ import { ArrowRight } from 'lucide-react'
 import { Link } from 'react-router'
 import Panel from '../components/Panel'
 import RoomIntro from '../components/RoomIntro'
-import { buttonPrimary, buttonSecondary } from '../components/ui'
+import { buttonPrimary } from '../components/ui'
 import { ROOMS_BY_ID } from '../rooms'
 
 const room = ROOMS_BY_ID.entrance
@@ -20,9 +20,6 @@ export default function Entrance() {
         <div className="flex flex-wrap gap-3">
           <Link to="/reception" className={buttonPrimary}>
             Walk in <ArrowRight className="size-4" aria-hidden="true" />
-          </Link>
-          <Link to="/hallway" className={buttonSecondary}>
-            See every room
           </Link>
         </div>
       </RoomIntro>

@@ -3,7 +3,6 @@ import AppShell from './components/layout/AppShell'
 import Billing from './routes/Billing'
 import Consult from './routes/Consult'
 import Entrance from './routes/Entrance'
-import Hallway from './routes/Hallway'
 import Imaging from './routes/Imaging'
 import NotFound from './routes/NotFound'
 import Operatory from './routes/Operatory'
@@ -18,7 +17,6 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Entrance /> },
       { path: 'reception', element: <Reception /> },
-      { path: 'hallway', element: <Hallway /> },
       { path: 'operatory', element: <Operatory /> },
       { path: 'imaging', element: <Imaging /> },
       { path: 'consult', element: <Consult /> },

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { ArrowRight, Info, Send, Sparkles } from 'lucide-react'
+import { ArrowRight, Send, Sparkles } from 'lucide-react'
 import { Link, useNavigate } from 'react-router'
 import { askCopilot } from '../lib/copilot'
 import { askEducation, type EducationChatResponse } from '../lib/educationChat'
@@ -10,7 +10,7 @@ import { buttonPrimary, buttonSecondary, eyebrow, fieldInput, textLink, tileLift
 const SOURCE_LABEL: Record<NonNullable<DecodeChatMessage['source']>, string> = {
   plan: 'From your plan',
   backend: 'Benefits assistant',
-  offline: 'Offline demo',
+  error: 'Assistant unavailable',
 }
 
 /** Quick-action pills under the input. The tooth one follows whatever is selected on the chart. */
@@ -71,7 +71,10 @@ export default function DecodeChatbot({ compact = false }: { compact?: boolean }
         reply = { text: res.answer, source: res.source, meta: res }
       }
     } catch {
-      reply = { text: 'Sorry, I had trouble answering that. Please try again.', source: 'offline' }
+      reply = {
+        text: "I couldn't reach the benefits assistant just now, so I can't answer that. Please try again in a moment.",
+        source: 'error',
+      }
     }
 
     addChatMessage({ sender: 'assistant', text: reply.text, source: reply.source })
@@ -123,12 +126,6 @@ export default function DecodeChatbot({ compact = false }: { compact?: boolean }
                   <span className="sr-only">Benefits assistant: </span>
                   {m.text}
                 </p>
-                {m.source === 'offline' && (
-                  <p className="mt-2 flex items-start gap-2 text-sm text-ink-muted">
-                    <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                    The assistant service wasn&rsquo;t reachable, so this came from the built-in glossary.
-                  </p>
-                )}
               </li>
             ),
           )}
