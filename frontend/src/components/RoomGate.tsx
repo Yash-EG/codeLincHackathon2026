@@ -5,6 +5,7 @@ import type { Prerequisite } from '../rooms'
 import { useMissingPrerequisite } from '../store/usePrerequisite'
 import { useSessionStore } from '../store/sessionStore'
 import Panel from './Panel'
+import { buttonPrimary } from './ui'
 
 /** Shows the room's content, or explains (with a link) what to do first. */
 export default function RoomGate({ prerequisite, children }: { prerequisite: Prerequisite; children: ReactNode }) {
@@ -20,7 +21,7 @@ export default function RoomGate({ prerequisite, children }: { prerequisite: Pre
       <p>{missing}</p>
       <Link
         to={next.to}
-        className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-white no-underline transition hover:bg-primary-strong"
+        className={buttonPrimary}
       >
         {next.label} <ArrowRight className="size-4" aria-hidden="true" />
       </Link>

@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { BellRing, CalendarPlus } from 'lucide-react'
+import { CalendarPlus } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import AnnualMaxProgress from '../components/AnnualMaxProgress'
 import Panel from '../components/Panel'
@@ -130,15 +130,13 @@ function RecordsContent() {
         )}
       </Panel>
 
-      <Panel id="reminders" title="Reminders">
-        <ul className="space-y-2">
+      <Panel id="reminders" eyebrow="Year-end alerts" title="Reminders">
+        <ul className="border-t-2 border-ink">
           {reminders.map((r) => (
-            <li key={r.id} className="flex gap-3 rounded-xl border border-line bg-surface p-3">
-              <BellRing className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
+            <li key={r.id} className="grid gap-x-4 border-b border-line py-3 sm:grid-cols-[8rem_minmax(0,1fr)]">
+              <p className="font-mono text-sm tabular-nums text-ink-muted">{formatLongDate(r.date)}</p>
               <div className="min-w-0">
-                <p className="font-semibold text-ink">
-                  {formatLongDate(r.date)}: {r.title}
-                </p>
+                <p className="font-medium text-ink">{r.title}</p>
                 <p className="text-sm text-ink-muted">{r.description}</p>
               </div>
             </li>

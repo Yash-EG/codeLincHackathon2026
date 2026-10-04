@@ -14,7 +14,7 @@ export default function Reception() {
   return (
     <>
       <RoomIntro room={room} id="welcome" title="Welcome in">
-        <p className="text-lg font-semibold text-ink">Know what you&rsquo;ll owe before you sit in the chair.</p>
+        <p className="font-serif text-xl italic text-ink">Know what you&rsquo;ll owe before you sit in the chair.</p>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link to="#check-in" className={buttonPrimary}>
             Check in your plan <ArrowRight className="size-4" aria-hidden="true" />
@@ -26,7 +26,7 @@ export default function Reception() {
       </RoomIntro>
 
       <Panel id="how-it-works" title="How it works">
-        <ol className="list-decimal space-y-3 pl-5 marker:font-semibold marker:text-primary">
+        <ol className="list-decimal space-y-3 border-t-2 border-ink pt-4 pl-6 marker:font-mono marker:text-sm marker:text-ink-muted">
           <li>
             <strong>Check in your plan.</strong> Your annual maximum, deductible and what each kind of care is covered at.
           </li>
@@ -62,7 +62,7 @@ export default function Reception() {
       </Panel>
 
       <Panel id="doors" title="Where to next">
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="border-t-2 border-ink">
           {DOORS.map((door) => (
             <DoorCard key={door.id} room={door} />
           ))}
