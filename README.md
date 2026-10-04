@@ -108,70 +108,6 @@ When a precondition is missing (ambiguous procedure, no active plan, missing too
 no pricing rows, unsupported intent) the service returns a single plain-English
 **clarification question** instead of guessing.
 
-## Repository layout
-
-```
-backend/                      Spring Boot API + Bedrock (see "Backend")
-db/
-  migrations/
-    V1__schema.sql            tables: users, dental_plans, plan_coverage, procedures, benefit_usage
-    V2__seed_data.sql         demo seed: "Demo PPO" plan, 9 canonical procedures, demo user 1
-    V3__appointments.sql      appointments + appointment_procedures (+ demo user 1's last visit)
-    V4__more_members.sql      a second plan and four more fictional employees with 2026 usage
-  queries.sql                 one verification query per required question (Q1–Q9)
-  README.md                   database-layer documentation (owner: Gopal)
-frontend/
-  src/
-    router.tsx                one route per room under the AppShell layout
-    rooms.ts                  the room directory (paths, names, descriptions, prerequisites)
-    routes/                   room pages: real, accessible content
-    components/               layout shell, panels, tooth picker, education chat, 3D office, ...
-    store/                    Zustand stores (session, dental, settings, ui, scene) + selectors
-    lib/
-      estimate.ts             coinsurance / deductible / annual-max estimator (UI)
-      sequencing.ts           this year vs. after Jan 1 comparison (UI)
-      mockAssistant.ts        OFFLINE stand-in for a procedure-estimate backend (not yet wired)
-      educationChat.ts        client for POST /api/education/chat (+ offline glossary fallback)
-    data/mockData.ts          demo plans for the offline UI (Lincoln Preferred PPO / High-Option)
-    a11y/                     route focus, reduced motion, WebGL check, fixed-bar height vars
-```
-
-Theme colors are tokens in `frontend/src/index.css` (`@theme`; Tailwind v4 has no
-`tailwind.config.js`).
-
-## How the site is built
-
-The site is a dental office you walk through, one route per room. **The HTML is the
-real site.** Every heading, form, table and door is a normal element. The 3D office
-is a background layer behind it: `aria-hidden`, never focusable, driven by native
-page scroll (no `<ScrollControls>`).
-
-| Route | Room | What happens there |
-| --- | --- | --- |
-| `/` | Entrance | Landing page |
-| `/reception` | Reception | Check in a plan (sample or manual entry) |
-| `/hallway` | Hallway | Every room, as door cards |
-| `/operatory` | Operatory | Explore a procedure, describe care in words, or pick a tooth |
-| `/imaging` | Imaging | Ask the benefits-education chat (works without a plan) |
-| `/consult` | Consult office | What to do this plan year vs. after Jan 1 |
-| `/billing` | Billing | What you pay, line items, in- vs out-of-network |
-| `/providers` | Providers | In-network dentists, filtered (fictional demo listings) |
-| `/records` | Records | Annual maximum, claims, reminders (`.ics` export) |
-| `*` | Not found | Fallback route |
-
-**Two views of the same pages:**
-- **3D office (immersive):** text sits on frosted panels; as you scroll, the camera
-  holds on the object each section is about, then glides to the next. Changing room
-  flies the camera through a door.
-- **Traditional:** the 3D code is never downloaded. The same pages as a plain, solid document: a rail with every room and this page's sections, one readable column (about 70 characters a line), sections as bands under hairlines, a footer. No glass, shadows, parallax or motion; 17px text; high-contrast and print styles. The layout lives in `frontend/src/traditional.css`.
-  Turns on automatically for reduced-motion or when WebGL is unavailable. Either view
-  can be picked in the header.
-
-**Accessibility target:** WCAG 2.2 AA — skip link, one `<h1>` per room with focus
-moving to it on room change, polite live-region announcements, two-color focus rings,
-`scroll-padding` so fixed bars don't cover focused content, errors linked to fields,
-tooth map as plain buttons.
-
 ## Prerequisites
 
 - **Node.js** and **npm** for the frontend (built and verified with Vite 7; this
@@ -215,6 +151,51 @@ It needs a Mapbox token. Copy `frontend/.env.example` to `frontend/.env` and set
 Mapbox account (it ships in the browser bundle, and maps are billed per load). Without a
 token, or without WebGL, the map section is simply left out and the list works as before.
 `mapbox-gl` is its own lazy chunk, so it is only downloaded on this page.
+
+## How the site is built
+
+The site is a dental office you walk through, one route per room. **The HTML is the
+real site.** Every heading, form, table and door is a normal element. The 3D office
+is a background layer behind it: `aria-hidden`, never focusable, driven by native
+page scroll (no `<ScrollControls>`).
+
+| Route | Room | What happens there |
+| --- | --- | --- |
+| `/` | Entrance | Landing page |
+| `/reception` | Reception | Check in a plan (sample or manual entry) |
+| `/hallway` | Hallway | Every room, as door cards |
+| `/operatory` | Operatory | Explore a procedure, describe care in words, or pick a tooth |
+| `/imaging` | Imaging | Ask the benefits-education chat (works without a plan) |
+| `/consult` | Consult office | What to do this plan year vs. after Jan 1 |
+| `/billing` | Billing | What you pay, line items, in- vs out-of-network |
+| `/providers` | Providers | In-network dentists, filtered (fictional demo listings) |
+| `/records` | Records | Annual maximum, claims, reminders (`.ics` export) |
+| `*` | Not found | Fallback route |
+
+**Two views of the same pages:**
+- **3D office (immersive):** text sits on frosted panels; as you scroll, the camera
+  holds on the object each section is about, then glides to the next. Changing room
+  flies the camera through a door.
+- **Traditional:** the 3D code is never downloaded. The same pages as a plain, solid document: a rail with every room and this page's sections, one readable column (about 70 characters a line), sections as bands under hairlines, a footer. No glass, shadows, parallax or motion; 17px text; high-contrast and print styles. The layout lives in `frontend/src/traditional.css`.
+  Turns on automatically for reduced-motion or when WebGL is unavailable. Either view
+  can be picked in the header.
+
+**Accessibility target:** WCAG 2.2 AA — skip link, one `<h1>` per room with focus
+moving to it on room change, polite live-region announcements, two-color focus rings,
+`scroll-padding` so fixed bars don't cover focused content, errors linked to fields,
+tooth map as plain buttons.
+
+## The 3D office
+
+The rooms live in `frontend/src/components/3d/`, one file each (Entrance, Reception,
+Hallway, Operatory, Imaging, Consult, Billing, Providers, Records). Each is a cutaway room built
+procedurally from `roomKit.jsx` — **nothing is downloaded**; textures, bump and
+roughness maps are drawn on canvases in code. Each room exports `STOPS` (one camera
+stop per page section, keyed by the `<Panel>` id) and `DOORS` (for the fly-through on
+route change). `DentalOffice.jsx` mounts one room at a time with the camera rig and
+`STATIONS`; `useScrollStops.ts` drives scroll progress via ScrollTrigger. With
+reduced motion, door transitions become a short cross-fade. The whole 3D layer is a
+lazy chunk that the Traditional view never loads.
 
 ## Run the backend (Spring Boot + Bedrock)
 
@@ -398,17 +379,36 @@ not wired to `/api/analyze`; verified personal plan facts are not available to t
 education chatbot yet; there is no authentication; and all monetary values are
 placeholders.
 
-## The 3D office
+## Repository layout
 
-The rooms live in `frontend/src/components/3d/`, one file each (Entrance, Reception,
-Hallway, Operatory, Imaging, Consult, Billing, Providers, Records). Each is a cutaway room built
-procedurally from `roomKit.jsx` — **nothing is downloaded**; textures, bump and
-roughness maps are drawn on canvases in code. Each room exports `STOPS` (one camera
-stop per page section, keyed by the `<Panel>` id) and `DOORS` (for the fly-through on
-route change). `DentalOffice.jsx` mounts one room at a time with the camera rig and
-`STATIONS`; `useScrollStops.ts` drives scroll progress via ScrollTrigger. With
-reduced motion, door transitions become a short cross-fade. The whole 3D layer is a
-lazy chunk that the Traditional view never loads.
+```
+backend/                      Spring Boot API + Bedrock (see "Backend")
+db/
+  migrations/
+    V1__schema.sql            tables: users, dental_plans, plan_coverage, procedures, benefit_usage
+    V2__seed_data.sql         demo seed: "Demo PPO" plan, 9 canonical procedures, demo user 1
+    V3__appointments.sql      appointments + appointment_procedures (+ demo user 1's last visit)
+    V4__more_members.sql      a second plan and four more fictional employees with 2026 usage
+  queries.sql                 one verification query per required question (Q1–Q9)
+  README.md                   database-layer documentation (owner: Gopal)
+frontend/
+  src/
+    router.tsx                one route per room under the AppShell layout
+    rooms.ts                  the room directory (paths, names, descriptions, prerequisites)
+    routes/                   room pages: real, accessible content
+    components/               layout shell, panels, tooth picker, education chat, 3D office, ...
+    store/                    Zustand stores (session, dental, settings, ui, scene) + selectors
+    lib/
+      estimate.ts             coinsurance / deductible / annual-max estimator (UI)
+      sequencing.ts           this year vs. after Jan 1 comparison (UI)
+      mockAssistant.ts        OFFLINE stand-in for a procedure-estimate backend (not yet wired)
+      educationChat.ts        client for POST /api/education/chat (+ offline glossary fallback)
+    data/mockData.ts          demo plans for the offline UI (Lincoln Preferred PPO / High-Option)
+    a11y/                     route focus, reduced motion, WebGL check, fixed-bar height vars
+```
+
+Theme colors are tokens in `frontend/src/index.css` (`@theme`; Tailwind v4 has no
+`tailwind.config.js`).
 
 ## Team boundaries
 
