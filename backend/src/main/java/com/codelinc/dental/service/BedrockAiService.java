@@ -10,6 +10,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.ContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ConversationRole;
 import software.amazon.awssdk.services.bedrockruntime.model.ConverseResponse;
 import software.amazon.awssdk.services.bedrockruntime.model.Message;
+import software.amazon.awssdk.services.bedrockruntime.model.SystemContentBlock;
 
 import java.util.List;
 
@@ -36,15 +37,28 @@ public class BedrockAiService implements AiService {
 
     @Override
     public String generateText(String prompt) {
+        return converse(null, prompt);
+    }
+
+    @Override
+    public String generateText(String systemPrompt, String userPrompt) {
+        return converse(systemPrompt, userPrompt);
+    }
+
+    private String converse(String systemPrompt, String userPrompt) {
         Message userMessage = Message.builder()
                 .role(ConversationRole.USER)
-                .content(ContentBlock.fromText(prompt))
+                .content(ContentBlock.fromText(userPrompt))
                 .build();
 
         try {
-            ConverseResponse response = client.converse(request -> request
-                    .modelId(properties.modelId())
-                    .messages(userMessage));
+            ConverseResponse response = client.converse(request -> {
+                request.modelId(properties.modelId())
+                        .messages(userMessage);
+                if (systemPrompt != null && !systemPrompt.isBlank()) {
+                    request.system(SystemContentBlock.fromText(systemPrompt));
+                }
+            });
 
             return extractText(response);
         } catch (AiServiceException e) {

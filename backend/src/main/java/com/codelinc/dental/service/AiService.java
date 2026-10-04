@@ -21,6 +21,20 @@ public interface AiService {
     String generateText(String prompt);
 
     /**
+     * Send a system instruction plus a user prompt and return the model's text response.
+     *
+     * <p>The system prompt steers behaviour (e.g. "reply with strict JSON only"); the
+     * user prompt carries the actual request. Used by structured features like intent
+     * extraction that need a dedicated system instruction.
+     *
+     * @param systemPrompt the system instruction
+     * @param userPrompt   the user prompt
+     * @return the model's text output
+     * @throws com.codelinc.dental.exception.AiServiceException if the model call fails
+     */
+    String generateText(String systemPrompt, String userPrompt);
+
+    /**
      * Produce a plain-English explanation of an already-calculated {@link BenefitEstimate}.
      *
      * <p><strong>Explain only — never calculate.</strong> The numbers on {@code estimate} are
