@@ -17,12 +17,14 @@
 import type {
   AiAnalysis,
   CdtProcedure,
+  CoverageClass,
   CostEstimate,
   CostLineItem,
   NetworkTier,
   ProcedureRequest,
   SequenceStep,
 } from '../types/domain'
+import { apiFetch, errorMessage } from './apiError'
 
 // --- Backend DTO mirrors ----------------------------------------------------
 
@@ -91,12 +93,13 @@ export interface AnalyzeResult {
  * show it. The Vite dev server proxies /api -> :8080.
  */
 export async function analyze(req: AnalyzeRequest): Promise<AnalyzeResult> {
-  const res = await fetch('/api/analyze', {
+  const res = await apiFetch('/api/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),
   })
-  if (!res.ok) throw new Error(`analyze failed: ${res.status}`)
+  // The backend's own message (database off, Bedrock unavailable, ...) is what the chat shows.
+  if (!res.ok) throw new Error(await errorMessage(res))
   const data = (await res.json()) as AnalysisResponse
   return adaptAnalysis(data)
 }
@@ -142,6 +145,27 @@ export function adaptAnalysis(data: AnalysisResponse): AnalyzeResult {
 }
 
 /**
+ * The coverage class for a CDT code, by the CDT category ranges, matching how
+ * the database classes its procedures (db/migrations/V2: exams, X-rays and
+ * cleanings preventive; fillings, deep cleanings and extractions basic; root
+ * canals, crowns and implants major). The estimate DTO carries no category, and
+ * the UI labels and waiting periods read this, so it must not be a constant.
+ */
+export function coverageClassForCdt(cdtCode: string): CoverageClass {
+  const n = Number.parseInt(cdtCode.replace(/^D/i, ''), 10)
+  if (!Number.isFinite(n)) return 'BASIC'
+  if (n < 2000) return 'PREVENTIVE' // D0 diagnostic, D1 preventive
+  if (n < 2400) return 'BASIC' // D2000-D2399 fillings
+  if (n < 3000) return 'MAJOR' // D2400-D2999 inlays, onlays, crowns
+  if (n < 4000) return 'MAJOR' // D3 endodontics (root canals)
+  if (n < 5000) return 'BASIC' // D4 periodontics (deep cleaning)
+  if (n < 7000) return 'MAJOR' // D5 removable and D6 implant/fixed prosthodontics
+  if (n < 8000) return 'BASIC' // D7 oral surgery (extractions)
+  if (n < 9000) return 'ORTHODONTIC' // D8
+  return 'BASIC' // D9 adjunctive
+}
+
+/**
  * Fold the backend's flat list of per-network estimates into the UI's
  * CostLineItem shape (one item per procedure, with both networks under
  * `byNetwork`). The backend money fields already match CostEstimate.
@@ -176,7 +200,7 @@ function foldEstimatesToLineItems(estimates: BackendBenefitEstimate[]): CostLine
       cdtCode: inEst.cdtCode,
       shortName: inEst.procedureName,
       plainDescription: inEst.explanation ?? '',
-      coverageClass: 'MAJOR',
+      coverageClass: coverageClassForCdt(inEst.cdtCode),
       isCovered: true,
       isToothSpecific: inEst.toothNumber != null,
       inNetworkFee: inEst.fee,

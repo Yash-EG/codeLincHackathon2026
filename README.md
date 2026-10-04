@@ -219,11 +219,14 @@ cd backend
 # Build + run tests
 ./mvnw clean verify          # or: mvnw.cmd clean verify   (Windows)
 
-# Run WITHOUT a database (health + AI endpoints only)
+# Run WITHOUT a database: health, the AI dev endpoints and the education chat work;
+# /api/analyze and /api/members answer 503 with a message saying to enable the db profile.
 ./mvnw spring-boot:run       # starts on http://localhost:8080
 
-# Run WITH a database (enables /api/analyze and other db-profile features)
-# Set DATABASE_* env vars first, then:
+# Run WITH a database (enables /api/analyze, /api/members and the chatbot's plan facts).
+# Spring does not read .env files: export the variables in this shell first. The URL is the
+# JDBC form, e.g. jdbc:postgresql://<host>/<db>?sslmode=require (not the postgresql:// one psql uses).
+export DATABASE_URL=... DATABASE_USERNAME=... DATABASE_PASSWORD=...
 SPRING_PROFILES_ACTIVE=db ./mvnw spring-boot:run
 ```
 

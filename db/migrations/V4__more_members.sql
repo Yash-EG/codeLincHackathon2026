@@ -59,9 +59,8 @@ ON CONFLICT (email) DO NOTHING;
 
 -- -----------------------------------------------------------------------------
 -- 2026 usage. plan_paid follows each plan's coverage after the $50 deductible.
--- All visits are in-network: the analyzer's usage lookup (findBenefitUsage) sums
--- one network at a time, while queries.sql Q3/Q4 sum both, so out-of-network
--- usage would make the two disagree until that is settled.
+-- All visits are in-network. (Usage counts against one shared maximum and
+-- deductible whichever network it was in, as in queries.sql Q3/Q4.)
 --   Maya   (Demo PPO):      cleaning + filling                -> $285 used, deductible met
 --   Jordan (Demo PPO Plus): exam, crown, root canal, filling  -> $1,710 used, deductible met
 --   Sam    (Demo PPO):      nothing yet                       -> $0 used

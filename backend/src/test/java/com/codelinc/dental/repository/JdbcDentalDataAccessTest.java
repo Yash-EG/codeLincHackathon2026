@@ -132,7 +132,8 @@ class JdbcDentalDataAccessTest {
     @Test
     void findBenefitUsageMapsRemainingAmounts() {
         BenefitUsage mapped = new BenefitUsage(NetworkTier.IN_NETWORK, usd("0.00"), usd("600.00"));
-        when(jdbc.query(anyString(), any(RowMapper.class), eq(2026), eq("IN_NETWORK"), eq(1L)))
+        // Usage is one shared pot across networks, so the query takes only the year and the user.
+        when(jdbc.query(anyString(), any(RowMapper.class), eq(2026), eq(1L)))
                 .thenReturn(List.of(mapped));
 
         Optional<BenefitUsage> result = data.findBenefitUsage("1", 2026, NetworkTier.IN_NETWORK);

@@ -176,8 +176,12 @@ public class JdbcDentalDataAccess implements DentalDataAccess {
         if (uid == null) {
             return Optional.empty();
         }
-        // Pull the plan's annual maximum + deductible, and the user's summed usage for this year and
-        // network. Remaining amounts are plain SQL reductions (floored at zero), not benefit decisions.
+        // Pull the plan's annual maximum + deductible, and the user's summed usage for this year.
+        // Usage is summed across BOTH networks: the annual maximum and the deductible are one shared
+        // pot per plan year (db/queries.sql Q3/Q4). Filtering by network made the out-of-network
+        // estimate ignore everything already used in-network (full maximum, deductible not met).
+        // The network only labels the snapshot. Remaining amounts are plain SQL reductions (floored
+        // at zero), not benefit decisions.
         String sql = """
                 SELECT p.annual_maximum,
                        p.deductible,
@@ -188,7 +192,6 @@ public class JdbcDentalDataAccess implements DentalDataAccess {
                 LEFT JOIN benefit_usage bu
                   ON bu.user_id = u.id
                  AND bu.benefit_year = ?
-                 AND bu.network_type = ?
                 WHERE u.id = ?
                 GROUP BY p.annual_maximum, p.deductible
                 """;
@@ -200,7 +203,7 @@ public class JdbcDentalDataAccess implements DentalDataAccess {
             BigDecimal remainingMax = annualMax.subtract(used).max(BigDecimal.ZERO);
             BigDecimal remainingDed = deductible.subtract(dedMet).max(BigDecimal.ZERO);
             return new BenefitUsage(networkTier, remainingDed, remainingMax);
-        }, benefitYear, networkTier.name(), uid);
+        }, benefitYear, uid);
         return rows.stream().findFirst();
     }
 
