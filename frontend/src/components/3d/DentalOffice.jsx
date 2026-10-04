@@ -76,18 +76,23 @@ const NEAR = 0.1;
 const NEAR_TRANSIT = 0.01; // while flying through door openings
 const WIDE_SCREEN = 1024; // above this the text panels sit on the left…
 const SHIFT = 0.18; // …so the projection shifts the subject right of centre
-const HOLD = 0.6; // share of each section spent on its station before gliding to the next
+const HOLD = 0.5; // share of each section spent on its station before gliding to the next
 const BREATH_ORBIT = THREE.MathUtils.degToRad(1.5); // peak orbit while a section is held
 const BREATH_PAN = 0.05; // m, peak sideways drift while held
 const PULL_BACK = 0.14; // extra distance mid-glide between far-apart stops
 const PULL_BACK_LIFT = THREE.MathUtils.degToRad(4); // and a little extra height
-const LAMBDA = 3.2; // damping for THREE.MathUtils.damp (lower = softer follow)
+const LAMBDA = 2.6; // damping for THREE.MathUtils.damp (lower = softer follow)
 const LOOK_AHEAD = 0.9; // m along the fly-through path the camera looks toward
 const SWAP_FADE = 0.3; // m either side of the door swap over which the overlay fades in/out
 
 const smooth = (x) => {
   const t = THREE.MathUtils.clamp(x, 0, 1);
   return t * t * (3 - 2 * t);
+};
+/** Quintic smootherstep: zero speed and zero acceleration at both ends, so glides never lurch. */
+const smoother = (x) => {
+  const t = THREE.MathUtils.clamp(x, 0, 1);
+  return t * t * t * (t * (6 * t - 15) + 10);
 };
 const v3 = (a) => new THREE.Vector3(a[0], a[1], a[2]);
 
@@ -124,7 +129,8 @@ function angleDelta(a, b) {
  * spline; distance, azimuth and elevation ease), so it arcs around the room instead of
  * cutting across it, and the subject stays framed the whole way. It pulls back a little
  * mid-move when the targets are far apart. While held, it "breathes": a small orbit + pan
- * that is zero at both ends of the hold, so nothing jumps when a glide starts or ends.
+ * that is zero, and still, at both ends of the hold, so nothing jumps or jerks when a glide
+ * starts or ends.
  */
 function stationPose(path, p, outPos, outTarget) {
   const { stops, tgt, sph } = path;
@@ -135,9 +141,10 @@ function stationPose(path, p, outPos, outTarget) {
   let k = 0;
   let breath = 0;
   if (i === n - 1 || f <= HOLD) {
-    breath = Math.sin(Math.PI * Math.min(f / HOLD, 1));
+    // sin² rather than sin: it also starts and ends with zero speed.
+    breath = Math.sin(Math.PI * Math.min(f / HOLD, 1)) ** 2;
   } else {
-    k = smooth((f - HOLD) / (1 - HOLD));
+    k = smoother((f - HOLD) / (1 - HOLD));
   }
 
   const a = sph[i];
@@ -183,7 +190,7 @@ function setNear(camera, near) {
  * Follows the stations while settled; runs the door fly-through when `move` is set.
  * Transition legs: approach (door opens 200 ms before arrival) → dwell → through → swap → enter.
  */
-function CameraRig({ stops, getProgress, reduced, move, shown, onDoorOpen, onSwap, onDone, fadeRef }) {
+function CameraRig({ stops, getProgress, reduced, move, hold, onDoorOpen, onSwap, onDone, fadeRef }) {
   const camera = useThree((s) => s.camera);
   const size = useThree((s) => s.size);
   const look = useRef(new THREE.Vector3());
@@ -284,12 +291,18 @@ function CameraRig({ stops, getProgress, reduced, move, shown, onDoorOpen, onSwa
       plan.t += dt;
 
       if (plan.phase === "fadeOut") {
-        fade(plan.t / 0.2);
+        // Cross-fade: cover (0.2 s), swap rooms and cut the camera to the first station, uncover (0.25 s).
         if (plan.t >= 0.2 && !plan.swapped) {
           plan.swapped = true;
           onSwap(plan.to, null);
+          const first = ROOMS[plan.to]?.stops[0];
+          if (first) {
+            camera.position.copy(v3(first.camera));
+            look.current.copy(v3(first.target));
+          }
         }
-        if (plan.t >= 0.4) return finish();
+        fade(plan.t < 0.2 ? smooth(plan.t / 0.2) : 1 - smooth((plan.t - 0.2) / 0.25));
+        if (plan.t >= 0.45) return finish();
         camera.lookAt(look.current);
         return;
       }
@@ -344,7 +357,8 @@ function CameraRig({ stops, getProgress, reduced, move, shown, onDoorOpen, onSwa
       return;
     }
 
-    if (!path) return;
+    // The next room is warming up: the page already belongs to it, so don't drift toward its stops.
+    if (hold || !path) return;
     stationPose(path, getProgress(), wantP, wantT);
     if (!ready.current || reduced) {
       ready.current = true;
@@ -359,6 +373,51 @@ function CameraRig({ stops, getProgress, reduced, move, shown, onDoorOpen, onSwa
   });
 
   return null;
+}
+
+/**
+ * One room in the scene. The next room is mounted hidden before the camera moves: its shaders
+ * are compiled and its textures uploaded right away, while the camera is still, so the swap in
+ * the middle of the fly-through doesn't stall a frame. Then it reports ready and the move starts.
+ */
+function RoomSlot({ id, live, onWarm, children }) {
+  const ref = useRef(null);
+  const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
+  const warmed = useRef(live);
+
+  useEffect(() => {
+    if (warmed.current) return;
+    warmed.current = true;
+    const group = ref.current;
+    if (group) {
+      // Compile for the scene as it will be after the swap: this room alone. Every door plaque
+      // carries a point light, and three.js recompiles shaders when the light count changes.
+      const others = group.parent?.children.filter((c) => c !== group && c.userData.roomSlot && c.visible) ?? [];
+      others.forEach((c) => (c.visible = false));
+      group.visible = true;
+      try {
+        gl.compile(scene, camera);
+        group.traverse((o) => {
+          for (const m of [].concat(o.material ?? [])) {
+            for (const v of Object.values(m)) if (v?.isTexture) gl.initTexture(v);
+          }
+        });
+      } catch {
+        // Best effort: anything missed compiles on first sight, as before.
+      }
+      group.visible = false;
+      others.forEach((c) => (c.visible = true));
+    }
+    onWarm(id);
+  }, [id, gl, scene, camera, onWarm]);
+
+  return (
+    <group ref={ref} visible={live} userData={{ roomSlot: true }}>
+      {children}
+    </group>
+  );
 }
 
 /**
@@ -384,20 +443,29 @@ export default function DentalOffice({
   onStationChange,
 }) {
   const [shown, setShown] = useState(room);
+  // The room we're about to fly into: mounted hidden and warmed up first (see RoomSlot).
+  const [pending, setPending] = useState(null);
   const [openDoor, setOpenDoor] = useState(null);
   const [move, setMove] = useState(null);
   const moves = useRef(0);
+  const shownRef = useRef(shown);
+  shownRef.current = shown;
 
-  // A new route starts a fly-through; one more queued change runs when this one lands.
+  // A new route mounts the next room; once it is warm the fly-through starts. One more queued
+  // change runs when this one lands.
   useEffect(() => {
-    if (move || room === shown || !ROOMS[room]) return;
+    if (move || pending || room === shown || !ROOMS[room]) return;
     if (!ROOMS[shown]) {
       setShown(room);
       return;
     }
+    setPending(room);
+  }, [room, shown, move, pending]);
+
+  const onWarm = useCallback((to) => {
     moves.current += 1;
-    setMove({ key: moves.current, from: shown, to: room });
-  }, [room, shown, move]);
+    setMove({ key: moves.current, from: shownRef.current, to });
+  }, []);
 
   const stops = useMemo(() => stopsFor(room, sections), [room, sections]);
   const focus = room === shown ? stops[Math.min(active, stops.length - 1)]?.focus : undefined;
@@ -418,9 +486,11 @@ export default function DentalOffice({
   const onDone = useCallback(() => {
     setOpenDoor(null);
     setMove(null);
+    setPending(null);
   }, []);
 
-  const Room = ROOMS[shown]?.Room;
+  // Keyed by room id, so the warmed room is the same instance once it is shown: no remount at the swap.
+  const mounted = [shown, pending].filter((id, i, all) => id && ROOMS[id] && all.indexOf(id) === i);
   return (
     <Canvas
       shadows
@@ -432,13 +502,21 @@ export default function DentalOffice({
       }}
     >
       <Lights />
-      {Room && <Room key={shown} highlight={focus} openDoor={openDoor} jarFill={jarFill} />}
+      {mounted.map((id) => {
+        const { Room } = ROOMS[id];
+        const live = id === shown;
+        return (
+          <RoomSlot key={id} id={id} live={live} onWarm={onWarm}>
+            <Room highlight={live ? focus : undefined} openDoor={live ? openDoor : null} jarFill={jarFill} />
+          </RoomSlot>
+        );
+      })}
       <CameraRig
         stops={stops}
         getProgress={getProgress}
         reduced={reducedMotion}
         move={move}
-        shown={shown}
+        hold={pending !== null && !move}
         onDoorOpen={onDoorOpen}
         onSwap={onSwap}
         onDone={onDone}

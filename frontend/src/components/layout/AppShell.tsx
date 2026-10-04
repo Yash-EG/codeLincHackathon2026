@@ -48,7 +48,11 @@ export default function AppShell() {
         {view === 'traditional' && <TraditionalRail />}
         <div className="app-column">
           <main id="main" tabIndex={-1} className="relative z-40 pb-[calc(var(--maxbar-h,0px)+2.5rem)] short:pb-10">
-            <div className="space-y-6 px-4 py-6 sm:px-6 sm:py-8 traditional:space-y-0 traditional:p-0 immersive:lg:w-(--drawer-w) immersive:lg:space-y-0 immersive:lg:px-12 immersive:lg:py-0">
+            {/* Keyed by path, so each new page eases in (index.css: .page-enter). */}
+            <div
+              key={pathname}
+              className="page-enter space-y-6 px-4 py-6 sm:px-6 sm:py-8 traditional:space-y-0 traditional:p-0 immersive:lg:w-(--drawer-w) immersive:lg:space-y-0 immersive:lg:px-12 immersive:lg:py-0"
+            >
               <Outlet />
             </div>
           </main>
