@@ -1,4 +1,5 @@
 import { useShallow } from 'zustand/react/shallow'
+import EducationChat from '../components/EducationChat'
 import Panel from '../components/Panel'
 import RoomGate from '../components/RoomGate'
 import RoomIntro from '../components/RoomIntro'
@@ -25,6 +26,9 @@ export default function Imaging() {
   return (
     <>
       <RoomIntro room={room} />
+      <Panel id="ask" eyebrow="Glossary" title="Ask about your benefits">
+        <EducationChat />
+      </Panel>
       <RoomGate prerequisite="plan">
         <Coverage />
       </RoomGate>

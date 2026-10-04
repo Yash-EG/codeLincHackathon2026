@@ -1,0 +1,53 @@
+{
+  "_comment": "Reviewed, general dental-insurance definitions for the benefits-education chatbot. These are GENERAL concepts only — never plan-specific rules or amounts. The model may rewrite these in plainer language but must not invent definitions. Edit here to change what the chatbot teaches. Keep each definition concise and jargon-light.",
+  "terms": [
+    {
+      "key": "deductible",
+      "aliases": ["deductible", "deductable"],
+      "term": "Deductible",
+      "definition": "A deductible is the amount you may need to pay for covered care before your plan starts paying for certain services. What counts toward it depends on your plan."
+    },
+    {
+      "key": "copay",
+      "aliases": ["copay", "co-pay", "co pay", "copayment"],
+      "term": "Copay",
+      "definition": "A copay is a fixed dollar amount you pay for a covered service, for example a set fee for a visit. It does not change with the total bill."
+    },
+    {
+      "key": "coinsurance",
+      "aliases": ["coinsurance", "co-insurance", "co insurance"],
+      "term": "Coinsurance",
+      "definition": "Coinsurance is a percentage of the cost of a covered service that you pay, rather than a fixed dollar amount. For example, if your plan covers a service at 80%, your coinsurance is the remaining 20%."
+    },
+    {
+      "key": "annual_maximum",
+      "aliases": ["annual maximum", "annual max", "yearly maximum", "plan maximum", "benefit maximum", "maximum benefit"],
+      "term": "Annual maximum",
+      "definition": "An annual maximum is the most a dental plan will pay toward your covered care during a plan year. Once the plan has paid that much, you typically pay the full cost of further care until the plan year resets."
+    },
+    {
+      "key": "in_network",
+      "aliases": ["in network", "in-network", "network dentist", "participating provider"],
+      "term": "In network",
+      "definition": "An in-network dentist has agreed to the plan's negotiated prices. Staying in network usually means lower out-of-pocket costs and no surprise charges above the agreed amount."
+    },
+    {
+      "key": "out_of_network",
+      "aliases": ["out of network", "out-of-network", "oon", "nonparticipating", "non-participating"],
+      "term": "Out of network",
+      "definition": "An out-of-network dentist has not agreed to the plan's negotiated prices. The plan may pay less, and you may owe the difference between the dentist's charge and the amount the plan allows."
+    },
+    {
+      "key": "allowed_amount",
+      "aliases": ["allowed amount", "allowed charge", "allowable", "ucr", "usual customary and reasonable", "usual, customary and reasonable"],
+      "term": "Allowed amount",
+      "definition": "The allowed amount is the maximum amount a plan considers reasonable for a covered service. The plan calculates its share from this amount, not necessarily from the dentist's full charge."
+    },
+    {
+      "key": "balance_billing",
+      "aliases": ["balance billing", "balance bill", "balance-billing"],
+      "term": "Balance billing",
+      "definition": "Balance billing is when an out-of-network dentist bills you for the difference between their charge and the amount your plan allows. In-network dentists generally cannot balance bill for covered services."
+    }
+  ]
+}

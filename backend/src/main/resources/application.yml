@@ -26,6 +26,16 @@ app:
     region: ${BEDROCK_REGION:us-east-2}
     model-id: ${BEDROCK_MODEL_ID:us.amazon.nova-2-lite-v1:0}
 
+  # Benefits-EDUCATION chatbot. Separate, dedicated model ID so the education
+  # capability can use a different model from the procedure-intent integration.
+  # Region and credentials come from the shared Bedrock setup above. If the model
+  # ID is blank or disabled, glossary answers still work via a deterministic
+  # plain-language fallback. Set EDUCATION_BEDROCK_MODEL_ID to enable rewriting.
+  education:
+    bedrock:
+      enabled: ${EDUCATION_BEDROCK_ENABLED:true}
+      model-id: ${EDUCATION_BEDROCK_MODEL_ID:}
+
   # Centralized dev CORS. Comma-separated list; defaults to the Vite dev server.
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}

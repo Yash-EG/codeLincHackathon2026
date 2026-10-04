@@ -1,7 +1,7 @@
 // The building directory: one entry per route. Navigation, door cards, page
 // titles and screen-reader arrival announcements all read from this list.
 
-export type RoomId = 'entrance' | 'reception' | 'hallway' | 'operatory' | 'imaging' | 'consult' | 'billing' | 'records'
+export type RoomId = 'entrance' | 'reception' | 'hallway' | 'operatory' | 'imaging' | 'consult' | 'billing' | 'records' | 'providers'
 
 /** What a room needs before it has anything to show. Doors still work; they say what's missing. */
 export type Prerequisite = 'plan' | 'procedure'
@@ -92,6 +92,16 @@ export const ROOMS: Room[] = [
     description:
       'Filing cabinets and a cork board. Your annual maximum, this year’s claims, and reminders you can add to your calendar.',
     requirement: 'Annual max + reminders',
+    prerequisite: 'plan',
+  },
+  {
+    id: 'providers',
+    path: '/providers',
+    name: 'Providers',
+    purpose: 'Find an in-network dentist.',
+    description:
+      'The referral desk, with a pinned map of nearby offices. Browse dentists in your plan’s network, filter by specialty, and see who is accepting new patients.',
+    requirement: 'In-network providers',
     prerequisite: 'plan',
   },
 ]

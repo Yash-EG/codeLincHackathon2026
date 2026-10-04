@@ -24,10 +24,11 @@ The site is a dental office you walk through, one route per room. **The HTML is 
 | `/reception` | Reception | Check in a plan (sample or manual entry) |
 | `/hallway` | Hallway | Every room, as door cards |
 | `/operatory` | Operatory | Explore a procedure (guided), describe care in words, or pick a tooth |
-| `/imaging` | Imaging | Coverage tiers, frequency limits, fine print in plain English |
+| `/imaging` | Imaging | Ask the benefits glossary chat (works without a plan), coverage tiers, frequency limits, fine print in plain English |
 | `/consult` | Consult office | What to do this plan year vs. after Jan 1 |
 | `/billing` | Billing | What you pay, line items, in- vs out-of-network |
 | `/records` | Records | Annual maximum, claims, reminders (`.ics` export) |
+| `/providers` | Providers | In-network dentists, filtered by specialty and new patients (fictional demo listings) |
 
 Every room shares a persistent shell: a skip link, a header with the **Directory** and the view toggle, an always-visible **annual max bar**, and **Ask AI** (a native modal `<dialog>`).
 
@@ -206,6 +207,10 @@ curl -X POST http://localhost:8080/api/ai/test \
 If `AWS_BEARER_TOKEN_BEDROCK` is not available to the process, `/api/ai/test`
 returns a clean `502` JSON error instead of a stack trace — the health endpoint
 still works regardless.
+
+### Benefits-education chat
+
+`POST /api/education/chat` with `{"message": "What is a deductible?"}` answers general benefits questions from the reviewed glossary in `backend/src/main/resources/education/glossary.json`. It routes personal-plan questions (no verified plan facts yet) and cost questions (handed off to the estimate flow). Set `EDUCATION_BEDROCK_MODEL_ID` to let a dedicated Bedrock model rewrite the answers; leave it blank for the deterministic fallback. The Imaging chat (`frontend/src/lib/educationChat.ts`) calls it through the Vite `/api` proxy and falls back to an in-browser copy of the glossary when the backend isn't running.
 
 ## The 3D office
 
