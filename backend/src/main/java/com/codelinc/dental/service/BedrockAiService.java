@@ -60,9 +60,9 @@ public class BedrockAiService implements AiService, StructuredAiService {
             return null;
         }
         try {
-            return converse(
+            return TextSanitizer.stripMarkdown(converse(
                     BenefitExplanationPrompt.SYSTEM,
-                    BenefitExplanationPrompt.user(estimate)).trim();
+                    BenefitExplanationPrompt.user(estimate)));
         } catch (RuntimeException e) {
             // Narration is best-effort; never let it corrupt or block the authoritative estimate.
             log.warn("explainEstimate failed for {}; returning no explanation", estimate.cdtCode(), e);

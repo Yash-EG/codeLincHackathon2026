@@ -1,6 +1,7 @@
 package com.codelinc.dental.service.education;
 
 import com.codelinc.dental.dto.education.EducationChatResponse;
+import com.codelinc.dental.service.TextSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -46,15 +47,21 @@ public class EducationChatService {
             Rules you must follow:
             - Use ONLY the approved definitions and the verified plan facts given in the user
               message. Do not invent definitions, plan rules, coverage, or dollar amounts.
-            - Clearly separate "In general" (the concept) from "Your plan" (verified facts).
+            - Clearly separate the general concept from the employee's own plan. When you have
+              verified plan facts, lead with one short general sentence, then state their plan.
             - Never promise coverage or payment. Amounts are estimates decided by the insurer.
             - A "copay" is a FIXED DOLLAR amount. "Coinsurance" is a PERCENTAGE. If the verified
               facts show coinsurance (a percentage) but the employee said "copay", gently
               correct the terminology.
             - If a specific plan amount is missing, say it is not available / cannot be verified
               yet. Do NOT guess or present example numbers as the employee's actual amounts.
-            - Keep the answer short and free of unnecessary jargon. Do not add a question ID,
-              preamble, or sign-off. Return only the answer text.
+
+            Formatting (follow exactly):
+            - Output PLAIN TEXT ONLY. Do NOT use markdown. No asterisks (*), no bold or italics,
+              no backticks, no headings (#), no bullet points, no numbered lists.
+            - Write 1-3 short, complete sentences as a single paragraph. No labels like
+              "In general:" or "Your plan:"; no preamble, question ID, or sign-off.
+            - Return only the answer text.
             """;
 
     // Any currency-looking token, used to guard the model from inventing amounts.
@@ -270,7 +277,7 @@ public class EducationChatService {
                 log.warn("Education model introduced an unsupported amount; using deterministic answer.");
                 return new Rewrite(deterministic, false);
             }
-            return new Rewrite(rewritten.trim(), true);
+            return new Rewrite(TextSanitizer.stripMarkdown(rewritten), true);
         } catch (RuntimeException e) {
             log.warn("Education model rewrite failed; using deterministic answer.", e);
             return new Rewrite(deterministic, false);
