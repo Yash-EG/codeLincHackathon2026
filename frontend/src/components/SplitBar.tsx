@@ -6,11 +6,11 @@ interface SplitBarProps {
   size?: 'sm' | 'md'
 }
 
-/** Covered vs out-of-pocket for one amount: two segments with a 2px surface gap. */
+/** Covered vs out-of-pocket for one amount: two flat segments with a 2px surface gap. */
 export default function SplitBar({ planPays, patientPays, size = 'sm' }: SplitBarProps) {
   const total = planPays + patientPays
   const planPct = total > 0 ? (planPays / total) * 100 : 0
-  const height = size === 'md' ? 'h-2.5' : 'h-1.5'
+  const height = size === 'md' ? 'h-2' : 'h-1.5'
 
   return (
     <div
@@ -20,19 +20,12 @@ export default function SplitBar({ planPays, patientPays, size = 'sm' }: SplitBa
     >
       {planPays > 0 && (
         <div
-          className="h-full rounded-l-full rounded-r-[4px] bg-viz-plan transition-[width] duration-500"
+          className="h-full bg-viz-plan transition-[width] duration-500 motion-reduce:transition-none"
           style={{ width: `${planPct}%` }}
           title={`Insurance pays ${formatUsd(planPays)}`}
         />
       )}
-      {patientPays > 0 && (
-        <div
-          className={`h-full flex-1 bg-viz-you transition-[width] duration-500 ${
-            planPays > 0 ? 'rounded-l-[4px] rounded-r-full' : 'rounded-full'
-          }`}
-          title={`You pay ${formatUsd(patientPays)}`}
-        />
-      )}
+      {patientPays > 0 && <div className="h-full flex-1 bg-viz-you" title={`You pay ${formatUsd(patientPays)}`} />}
     </div>
   )
 }

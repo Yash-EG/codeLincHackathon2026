@@ -135,7 +135,7 @@ export default function ExploreProcedureForm({ onContinue }: { onContinue?: (ans
     return (
       <div className="space-y-4">
         <p className="text-ink-muted">Here&rsquo;s what you told us. Nothing is submitted anywhere yet.</p>
-        <dl className="grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-2">
+        <dl className="grid gap-px border-t-2 border-ink bg-line sm:grid-cols-2">
           <SummaryRow label="Who it's for" value={labelFor('patient', submitted.selections.patient)} />
           <SummaryRow label="Procedure" value={labelFor('procedure', submitted.selections.procedure)} />
           <SummaryRow label="Timing" value={labelFor('timing', submitted.selections.timing)} />
@@ -157,7 +157,7 @@ export default function ExploreProcedureForm({ onContinue }: { onContinue?: (ans
       {errorCount > 0 && (
         <p
           role="alert"
-          className="flex items-start gap-2 rounded-xl border border-danger/40 bg-surface px-3 py-2 text-sm font-semibold text-danger"
+          className="flex items-start gap-2 border-l-2 border-danger py-1 pl-3 text-sm font-semibold text-danger"
         >
           <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
           {errorCount === 1 ? '1 answer is' : `${errorCount} answers are`} missing.
@@ -178,7 +178,7 @@ export default function ExploreProcedureForm({ onContinue }: { onContinue?: (ans
       ))}
 
       <div>
-        <label htmlFor={zipId} className="block text-sm font-semibold text-ink">
+        <label htmlFor={zipId} className="block font-mono text-[11px] font-medium uppercase tracking-widest text-ink">
           Where should we look?
         </label>
         <p id={`${zipId}-hint`} className="text-sm text-ink-muted">
@@ -199,7 +199,7 @@ export default function ExploreProcedureForm({ onContinue }: { onContinue?: (ans
           }}
           aria-invalid={zipError ? true : undefined}
           aria-describedby={zipError ? `${zipId}-hint ${zipId}-error` : `${zipId}-hint`}
-          className={`${fieldInput} max-w-[12rem]`}
+          className={`${fieldInput} max-w-[12rem] font-mono tabular-nums`}
         />
         {zipError && (
           <p id={`${zipId}-error`} className="mt-1 flex items-start gap-1.5 text-sm font-medium text-danger">
@@ -231,7 +231,7 @@ function ChoiceGroup({
   const errorId = `explore-${group.key}-error`
   return (
     <fieldset aria-describedby={error ? errorId : undefined}>
-      <legend className="mb-2 text-sm font-semibold text-ink">{group.legend}</legend>
+      <legend className="mb-2 font-mono text-[11px] font-medium uppercase tracking-widest text-ink">{group.legend}</legend>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {group.options.map((opt) => {
           const selected = value === opt.value
@@ -246,10 +246,10 @@ function ChoiceGroup({
                 className="peer sr-only"
               />
               <span
-                className={`flex min-h-11 cursor-pointer items-center justify-center rounded-xl border px-3 py-2.5 text-center text-sm font-medium transition peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary peer-focus-visible:shadow-[0_0_0_2px_#fff] ${
+                className={`flex min-h-11 cursor-pointer items-center justify-center rounded-sm border px-3 py-2.5 text-center text-sm font-medium transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary ${
                   selected
-                    ? 'border-primary bg-sky font-semibold text-primary ring-1 ring-primary/40'
-                    : 'border-control bg-surface text-ink hover:border-primary hover:text-primary'
+                    ? 'border-primary bg-primary/[0.05] font-semibold text-primary'
+                    : 'border-control bg-surface text-ink hover:border-ink'
                 }`}
               >
                 {opt.label}
@@ -271,8 +271,8 @@ function ChoiceGroup({
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-surface px-4 py-3">
-      <dt className="text-sm text-ink-muted">{label}</dt>
-      <dd className="mt-0.5 font-semibold text-ink">{value}</dd>
+      <dt className="font-mono text-[11px] uppercase tracking-widest text-ink-muted">{label}</dt>
+      <dd className="mt-1 text-ink">{value}</dd>
     </div>
   )
 }
