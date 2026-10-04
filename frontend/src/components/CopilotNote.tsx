@@ -21,7 +21,7 @@ export default function CopilotNote({ className = '' }: { className?: string }) 
       </p>
       <p className="mt-1.5 max-w-[62ch] text-ink">{last.text}</p>
       <p className="mt-2 text-sm">
-        <Link to="#copilot" className={textLink}>
+        <Link to="/imaging#ask" className={textLink}>
           Ask a follow-up
         </Link>
       </p>

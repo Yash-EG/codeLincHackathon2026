@@ -14,7 +14,7 @@ export default function RoomGate({ prerequisite, children }: { prerequisite: Pre
   if (!missing) return <>{children}</>
 
   const next = hasPlan
-    ? { to: '/operatory#describe', label: 'Go to the Operatory' }
+    ? { to: '/operatory', label: 'Go to the Operatory' }
     : { to: '/reception#check-in', label: 'Go to Reception' }
   return (
     <Panel id="missing" title="Nothing to show yet">

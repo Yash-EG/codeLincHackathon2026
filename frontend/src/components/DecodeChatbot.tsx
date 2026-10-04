@@ -146,7 +146,7 @@ export default function DecodeChatbot({ compact = false }: { compact?: boolean }
       )}
 
       {handoff && (
-        <button type="button" onClick={() => navigate('/operatory#describe')} className={buttonSecondary}>
+        <button type="button" onClick={() => navigate('/operatory')} className={buttonSecondary}>
           Get a cost estimate <ArrowRight className="size-4" aria-hidden="true" />
         </button>
       )}
@@ -194,7 +194,7 @@ export default function DecodeChatbot({ compact = false }: { compact?: boolean }
       {!compact && (
         <p className="text-sm text-ink-muted">
           Ready to price your care?{' '}
-          <Link to="/operatory#describe" className={textLink}>
+          <Link to="/operatory" className={textLink}>
             Add planned care
           </Link>
           .

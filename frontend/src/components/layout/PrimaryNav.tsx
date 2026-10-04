@@ -25,7 +25,7 @@ const PRIMARY: PrimaryItem[] = [
   },
   {
     room: 'operatory',
-    to: '/operatory#describe',
+    to: '/operatory',
     label: 'Add planned care',
     blurb: 'Describe or pick your care',
     icon: Stethoscope,
