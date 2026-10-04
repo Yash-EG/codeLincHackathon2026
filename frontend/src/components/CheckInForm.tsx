@@ -91,46 +91,51 @@ export default function CheckInForm({ onSubmit }: { onSubmit: (input: ManualPlan
   const errorCount = Object.keys(errors).length
 
   return (
-    <form ref={formRef} noValidate onSubmit={submit} className="space-y-4">
+    <form ref={formRef} noValidate onSubmit={submit} className="space-y-6">
       {errorCount > 0 && (
-        <p className="flex items-start gap-2 rounded-xl border border-danger/40 bg-surface px-3 py-2 text-sm font-semibold text-danger">
+        <p role="alert" className="flex items-start gap-2 border-l-2 border-danger py-1 pl-3 text-sm font-semibold text-danger">
           <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
           {errorCount === 1 ? '1 field needs' : `${errorCount} fields need`} attention.
         </p>
       )}
-      <div className="grid gap-4 sm:grid-cols-2">
+      {/* An intake sheet: one ruled row per field, label and hint on the left, the answer on the right. */}
+      <div className="border-t-2 border-ink">
         {FIELDS.map((field) => {
           const id = `plan-${field.name}`
           const error = errors[field.name]
           return (
-            <div key={field.name}>
-              <label htmlFor={id} className="block text-sm font-semibold text-ink">
-                {field.label}
-                {field.kind === 'money' && ' ($)'}
-                {field.kind === 'percent' && ' (%)'}
-              </label>
-              <p id={`${id}-hint`} className="text-sm text-ink-muted">
-                {field.hint}
-              </p>
-              <input
-                id={id}
-                name={field.name}
-                type={field.kind === 'date' ? 'date' : 'text'}
-                inputMode={field.kind === 'money' || field.kind === 'percent' ? 'decimal' : undefined}
-                autoComplete="off"
-                required
-                value={values[field.name]}
-                onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))}
-                aria-invalid={error ? true : undefined}
-                aria-describedby={error ? `${id}-hint ${id}-error` : `${id}-hint`}
-                className={fieldInput}
-              />
-              {error && (
-                <p id={`${id}-error`} className="mt-1 flex items-start gap-1.5 text-sm font-medium text-danger">
-                  <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                  {error}
+            <div key={field.name} className="grid gap-x-6 gap-y-1 border-b border-line py-4 sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)]">
+              <div>
+                <label htmlFor={id} className="block font-mono text-[11px] font-medium uppercase tracking-widest text-ink">
+                  {field.label}
+                  {field.kind === 'money' && ' ($)'}
+                  {field.kind === 'percent' && ' (%)'}
+                </label>
+                <p id={`${id}-hint`} className="mt-1 text-sm leading-snug text-ink-muted">
+                  {field.hint}
                 </p>
-              )}
+              </div>
+              <div>
+                <input
+                  id={id}
+                  name={field.name}
+                  type={field.kind === 'date' ? 'date' : 'text'}
+                  inputMode={field.kind === 'money' || field.kind === 'percent' ? 'decimal' : undefined}
+                  autoComplete="off"
+                  required
+                  value={values[field.name]}
+                  onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))}
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? `${id}-hint ${id}-error` : `${id}-hint`}
+                  className={`${fieldInput} sm:mt-0 ${field.kind === 'text' ? '' : 'font-mono tabular-nums'}`}
+                />
+                {error && (
+                  <p id={`${id}-error`} className="mt-1.5 flex items-start gap-1.5 text-sm font-medium text-danger">
+                    <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                    {error}
+                  </p>
+                )}
+              </div>
             </div>
           )
         })}

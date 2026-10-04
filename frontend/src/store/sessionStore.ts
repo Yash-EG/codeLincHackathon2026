@@ -5,7 +5,7 @@
 
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
-import { BENEFIT_SUMMARY, CLAIMS, COVERAGE_TIERS, JARGON_TRANSLATIONS, PLAN, SAMPLE_PROCEDURE_INPUT } from '../data/mockData'
+import { CLAIMS, SAMPLE_PLANS, SAMPLE_PROCEDURE_INPUT, type SamplePlanId } from '../data/mockData'
 import { daysUntil, formatUsd } from '../lib/format'
 import type {
   AiAnalysis,
@@ -54,7 +54,8 @@ export interface SessionData {
 }
 
 interface SessionActions {
-  loadSamplePlan: () => void
+  /** Checks in one of the sample plans (default: Lincoln Preferred PPO). */
+  loadSamplePlan: (id?: SamplePlanId) => void
   setManualPlan: (input: ManualPlanInput) => void
   addProcedures: (requests: ProcedureRequest[]) => void
   removeProcedure: (requestId: string) => void
@@ -106,16 +107,18 @@ export const useSessionStore = create<SessionState>()(
     (set) => ({
       ...EMPTY,
 
-      loadSamplePlan: () =>
+      loadSamplePlan: (id = 'preferred') => {
+        const sample = SAMPLE_PLANS[id]
         set({
           ...EMPTY,
-          plan: PLAN,
-          tiers: COVERAGE_TIERS,
-          benefits: BENEFIT_SUMMARY,
+          plan: sample.plan,
+          tiers: sample.tiers,
+          benefits: sample.benefits,
           claims: CLAIMS,
-          translations: JARGON_TRANSLATIONS,
-          messages: [greetingFor(BENEFIT_SUMMARY)],
-        }),
+          translations: sample.translations,
+          messages: [greetingFor(sample.benefits)],
+        })
+      },
 
       setManualPlan: (input) => {
         // A plan year ends on planYearEnd and starts the day after the same date a year earlier.

@@ -239,10 +239,11 @@ Under the hood, Bedrock maps the free text to CDT codes using `cdt_procedures.co
 
 ## Demo script
 
-1. **Entrance → Walk in → Reception.** Choose **Use the sample plan**: Maya's Lincoln Preferred PPO. The max bar shows $400 of $1,500 used.
+1. **Entrance → Walk in → Reception.** On the intake sheet, keep **Lincoln Preferred PPO** selected and choose **Check in Lincoln Preferred PPO**. The max bar shows $400 of $1,500 used.
 2. **Operatory.** "Root canal on tooth #14" is already typed in, so choose **Price it**. The root canal costs you $232 in-network. The assistant adds the crown the tooth needs afterwards and books it for Jan 12: **"Do step 1 now and step 2 after Jan 1 to save $315."**
 3. **Billing.** See what you pay, and that the $50 deductible isn't met yet. Switch to **Out-of-network** to compare.
 4. **Consult office.** The timeline puts the root canal before Dec 31 and the crown after Jan 1. The table shows $1,284 if you do both this year, against $969 split.
 5. **Records.** See the annual maximum (the coin jar in 3D) and claims, then **Add to my calendar (.ics)**.
 6. **Ask AI** (bottom right in every room): *"Can I get another cleaning this year?"*
 7. Switch the header to **Traditional** to show the same pages with no 3D.
+8. For contrast, check in **Lincoln High-Option Dental** instead ($2,500 maximum, 90% basic, 60% major). The same root canal and crown both fit this year, so the timeline says there is nothing to gain by waiting.

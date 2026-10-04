@@ -23,8 +23,11 @@ export interface DentalState {
   /** What the user typed in "Describe your care" (default: "Root canal on tooth #14"). */
   procedureInput: string
   aiAnalysis: AiAnalysis | null
-  /** 'sample' checks in the sample plan, an object checks in a typed-in plan, null clears it. */
-  setPlan: (plan: 'sample' | ManualPlanInput | null) => void
+  /**
+   * 'sample' checks in Lincoln Preferred PPO, 'high-option' the High-Option
+   * sample, an object checks in a typed-in plan, null clears it.
+   */
+  setPlan: (plan: 'sample' | 'high-option' | ManualPlanInput | null) => void
   setProcedure: (text: string) => void
   setAiAnalysis: (analysis: AiAnalysis | null) => void
   updateBenefits: (patch: { annualMax?: number; used?: number }) => void
@@ -57,7 +60,8 @@ export function useDentalStore<T>(selector?: (state: DentalState) => T): T | Den
       procedureInput: s.procedureInput,
       aiAnalysis: s.aiAnalysis,
       setPlan: (plan) => {
-        if (plan === 'sample') s.loadSamplePlan()
+        if (plan === 'sample') s.loadSamplePlan('preferred')
+        else if (plan === 'high-option') s.loadSamplePlan('high-option')
         else if (plan) s.setManualPlan(plan)
         else s.reset()
       },
