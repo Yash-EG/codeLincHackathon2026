@@ -1,5 +1,6 @@
 package com.codelinc.dental.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -11,8 +12,15 @@ import jakarta.validation.constraints.Size;
  * trusted facts the backend loads for {@code userId} from the data layer. Accepting them from the
  * client would let the caller fabricate coverage or cost, which the analyzer must never trust.
  *
+ * <p>{@code pending} is an optional multi-turn carry-over: when a previous call returned a
+ * clarification (e.g. "which tooth?"), the server included a {@link PendingProcedure}; the client
+ * echoes it back here so a bare follow-up like {@code "19"} resolves against the remembered
+ * procedure. It still carries no pricing/coverage, and the backend re-validates the procedure
+ * against trusted data, so echoing it cannot inject untrusted facts.
+ *
  * @param userId  the id of the user asking (plan/usage are loaded server-side for this id)
  * @param message the natural-language question, e.g. "how much will a crown cost in vs out of network?"
+ * @param pending optional prior-turn context echoed from a previous clarification; may be {@code null}
  */
 public record AnalyzeRequest(
         @NotBlank(message = "userId must not be blank")
@@ -21,6 +29,9 @@ public record AnalyzeRequest(
 
         @NotBlank(message = "message must not be blank")
         @Size(max = 4000, message = "message must be at most 4000 characters")
-        String message
+        String message,
+
+        @Valid
+        PendingProcedure pending
 ) {
 }

@@ -41,6 +41,14 @@ export default function TreatmentMap() {
   async function explore(answers: ExploreAnswers) {
     // The ZIP and radius also set where the Providers map looks.
     useSessionStore.getState().setSearchLocation(answers.zip, Number(answers.radius) || 25)
+    // Keep the intake answers so chatbot follow-ups can include them as context.
+    useSessionStore.getState().setExploreAnswers({
+      patient: answers.patientLabel,
+      procedure: answers.procedureLabel,
+      timing: answers.timingLabel,
+      radius: answers.radiusLabel,
+      zip: answers.zip,
+    })
     const phrase = EXPLORE_PHRASE[answers.procedure]
     if (!phrase) return
     const text = selectedTooth != null ? `${phrase} on tooth #${selectedTooth}` : phrase

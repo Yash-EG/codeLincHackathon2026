@@ -49,6 +49,24 @@ export interface DecodeChatMessage {
   source?: 'backend' | 'error'
 }
 
+/**
+ * The Operatory "Explore a procedure" intake answers, kept so the chatbot can
+ * include them as context on every follow-up message. Human-readable labels, not
+ * codes, because they are sent to the assistant as plain-English context.
+ */
+export interface ExploreFormContext {
+  /** Who the care is for, e.g. "Me (account owner)". */
+  patient: string
+  /** The chosen procedure label, e.g. "Crown". */
+  procedure: string
+  /** When it's needed, e.g. "Within 3 months". */
+  timing: string
+  /** Travel radius label, e.g. "Within 25 miles". */
+  radius: string
+  /** Search ZIP, e.g. "43215". */
+  zip: string
+}
+
 export interface SessionData {
   /**
    * The database user the backend prices against (POST /api/analyze userId). "1" is the demo
@@ -70,6 +88,8 @@ export interface SessionData {
   selectedTooth: number | null
   /** What the user typed in "Describe your care". */
   procedureInput: string
+  /** The Operatory intake answers, included as context on chatbot follow-ups ({@code null} until submitted). */
+  exploreAnswers: ExploreFormContext | null
   /** Where to look for dentists: the ZIP and travel radius from the Explore form ("" until it's submitted). */
   searchZip: string
   searchRadiusMiles: number
@@ -96,6 +116,7 @@ interface SessionActions {
   /** Corrects the checked-in plan's annual maximum or the amount already used this year. */
   updateBenefits: (patch: { annualMax?: number; used?: number }) => void
   setProcedureInput: (text: string) => void
+  setExploreAnswers: (answers: ExploreFormContext | null) => void
   setAiAnalysis: (analysis: AiAnalysis | null) => void
   setSearchLocation: (zip: string, radiusMiles: number) => void
   setNetwork: (network: NetworkTier) => void
@@ -121,6 +142,7 @@ const EMPTY: SessionData = {
   network: 'IN_NETWORK',
   selectedTooth: null,
   procedureInput: '',
+  exploreAnswers: null,
   searchZip: '',
   searchRadiusMiles: 25,
   aiAnalysis: null,
@@ -271,6 +293,7 @@ export const useSessionStore = create<SessionState>()(
           }
         }),
       setProcedureInput: (procedureInput) => set({ procedureInput }),
+      setExploreAnswers: (exploreAnswers) => set({ exploreAnswers }),
       setAiAnalysis: (aiAnalysis) => set({ aiAnalysis }),
       setSearchLocation: (searchZip, searchRadiusMiles) => set({ searchZip, searchRadiusMiles }),
       setNetwork: (network) => set({ network }),
@@ -281,6 +304,7 @@ export const useSessionStore = create<SessionState>()(
     }),
     {
       name: 'molarity-session',
+      // v8: the Operatory Explore answers are kept so the chatbot can include them as context.
       // v8: sessions record which database member they price against (memberId).
       // v7: the Explore form's ZIP and radius are kept. v6: the directory adds Greensboro offices. v5: providers carry map coordinates. (v4: a default plan is loaded up front and the decode
       // chatbot keeps a transcript.) Older sessions start over.

@@ -34,6 +34,6 @@ public class AnalysisController {
 
     @PostMapping
     public AnalysisResponse analyze(@Valid @RequestBody AnalyzeRequest request) {
-        return analysisService.analyze(request.userId(), request.message());
+        return analysisService.analyze(request.userId(), request.message(), request.pending());
     }
 }

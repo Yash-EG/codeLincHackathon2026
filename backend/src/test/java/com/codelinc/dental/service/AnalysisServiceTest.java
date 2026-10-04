@@ -2,6 +2,7 @@ package com.codelinc.dental.service;
 
 import com.codelinc.dental.dto.AnalysisResponse;
 import com.codelinc.dental.dto.BenefitEstimate;
+import com.codelinc.dental.dto.PendingProcedure;
 import com.codelinc.dental.intent.DentalIntent;
 import com.codelinc.dental.intent.DentalIntentType;
 import com.codelinc.dental.intent.IntentExtractor;
@@ -229,6 +230,73 @@ class AnalysisServiceTest {
     void nullIntentIsHandledAsClarification() {
         AnalysisResponse response = service(fakeIntent(null), new FakeData()).analyze(USER, "???");
         assertThat(response.kind()).isEqualTo(AnalysisResponse.Kind.CLARIFICATION);
+    }
+
+    // ---- Multi-turn clarification context (pending) --------------------------------------------
+
+    @Test
+    void toothClarificationCarriesPendingProcedureForTheNextTurn() {
+        FakeData data = new FakeData(); // resolves "crown" -> D2740, tooth-specific
+        // First turn: user names a crown but no tooth.
+        DentalIntent crownNoTooth = new DentalIntent(
+                DentalIntentType.COST_ESTIMATE,
+                new ProcedureReference("crown", "D2740", null),
+                null);
+
+        AnalysisResponse first = service(fakeIntent(crownNoTooth), data)
+                .analyze(USER, "how much is a crown in vs out of network?");
+
+        assertThat(first.kind()).isEqualTo(AnalysisResponse.Kind.CLARIFICATION);
+        assertThat(first.clarificationQuestion()).contains("per tooth");
+        // The resolved procedure is carried back so the client can echo it.
+        assertThat(first.pending()).isNotNull();
+        assertThat(first.pending().cdtCode()).isEqualTo(CROWN_CDT);
+        assertThat(first.pending().procedureName()).isEqualTo("Crown");
+    }
+
+    @Test
+    void bareToothNumberWithPendingResolvesWithoutRestatingTheProcedure() {
+        FakeData data = new FakeData();
+        data.appointments.add(new RecentAppointment(
+                "appt-1", LocalDate.of(2026, 5, 1), CROWN_CDT, 19));
+
+        // Second turn: the message is just "19" and names no procedure (UNSUPPORTED intent),
+        // but the client echoes back the pending crown from the previous clarification.
+        DentalIntent bareNumber = new DentalIntent(DentalIntentType.UNSUPPORTED, null, null);
+        PendingProcedure pending = new PendingProcedure(CROWN_CDT, "Crown");
+
+        AnalysisResponse response = service(fakeIntent(bareNumber), data)
+                .analyze(USER, "19", pending);
+
+        assertThat(response.kind()).isEqualTo(AnalysisResponse.Kind.ESTIMATE);
+        assertThat(response.estimates()).hasSize(2);
+        assertThat(response.estimates().get(0).cdtCode()).isEqualTo(CROWN_CDT);
+        assertThat(response.estimates().get(0).toothNumber()).isEqualTo(19);
+    }
+
+    @Test
+    void pendingWithEchoedCdtCodeThatDoesNotMatchTheCatalogIsRejected() {
+        FakeData data = new FakeData(); // resolveProcedure(..) -> D2740 Crown
+        DentalIntent bareNumber = new DentalIntent(DentalIntentType.UNSUPPORTED, null, null);
+        // Client echoes a CDT code that does NOT match what the catalog resolves the name to.
+        PendingProcedure tampered = new PendingProcedure("D9999", "Crown");
+
+        AnalysisResponse response = service(fakeIntent(bareNumber), data)
+                .analyze(USER, "19", tampered);
+
+        // Trust guard: mismatched echo is not priced; we ask which procedure instead.
+        assertThat(response.kind()).isEqualTo(AnalysisResponse.Kind.CLARIFICATION);
+        assertThat(response.estimates()).isEmpty();
+    }
+
+    @Test
+    void parseToothNumberExtractsFromVariousPhrasings() {
+        assertThat(AnalysisService.parseToothNumber("19")).isEqualTo(19);
+        assertThat(AnalysisService.parseToothNumber("#19")).isEqualTo(19);
+        assertThat(AnalysisService.parseToothNumber("tooth 3")).isEqualTo(3);
+        assertThat(AnalysisService.parseToothNumber("it's number 32")).isEqualTo(32);
+        assertThat(AnalysisService.parseToothNumber("no number here")).isNull();
+        assertThat(AnalysisService.parseToothNumber("tooth 33")).isNull(); // out of 1..32 range
     }
 
     // ---- Missing precondition data -------------------------------------------------------------

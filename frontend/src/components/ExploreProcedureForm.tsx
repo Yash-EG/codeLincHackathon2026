@@ -84,6 +84,10 @@ type Errors = Partial<Record<GroupKey | 'zip', string>>
 export interface ExploreAnswers extends Selections {
   /** The human label of the chosen procedure, e.g. "Root canal". */
   procedureLabel: string
+  /** Human labels for the remaining single-selects, for plain-English context. */
+  patientLabel: string
+  timingLabel: string
+  radiusLabel: string
   zip: string
 }
 
@@ -129,7 +133,14 @@ export default function ExploreProcedureForm({
       return
     }
     setSubmitted({ selections: { ...selections }, zip: zip.trim() })
-    onContinue?.({ ...selections, procedureLabel: labelFor('procedure', selections.procedure), zip: zip.trim() })
+    onContinue?.({
+      ...selections,
+      procedureLabel: labelFor('procedure', selections.procedure),
+      patientLabel: labelFor('patient', selections.patient),
+      timingLabel: labelFor('timing', selections.timing),
+      radiusLabel: labelFor('radius', selections.radius),
+      zip: zip.trim(),
+    })
   }
 
   // Summary step: a read-only recap of what the employee chose. Selections stay
