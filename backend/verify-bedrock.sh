@@ -19,8 +19,13 @@ BASE="http://localhost:${PORT}"
 LOG="$(mktemp -t bedrock-verify-XXXX.log)"
 
 # --- Java 21 ---------------------------------------------------------------
+# Prefer an explicit JAVA_HOME; otherwise fall back to the known Java 21 path.
 if [ -z "${JAVA_HOME:-}" ] && [ -d /usr/lib/jvm/java-21-openjdk-amd64 ]; then
   export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+fi
+# Ensure the chosen JDK's bin is first on PATH so java/mvn use it (not a system
+# default such as JDK 25).
+if [ -n "${JAVA_HOME:-}" ]; then
   export PATH="$JAVA_HOME/bin:$PATH"
 fi
 echo "Java: $(java -version 2>&1 | head -1)"
@@ -44,23 +49,33 @@ APP_PID=$!
 trap 'kill "$APP_PID" 2>/dev/null || true' EXIT
 
 # --- wait for health -------------------------------------------------------
-for i in $(seq 1 45); do
-  if [ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/health" 2>/dev/null)" = "200" ]; then
+UP=""
+for i in $(seq 1 60); do
+  code="$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/health" 2>/dev/null || true)"
+  if [ "$code" = "200" ]; then
     echo "App is up after ${i}s."
+    UP=1
     break
   fi
   sleep 1
 done
 
+if [ -z "$UP" ]; then
+  echo "ERROR: app did not become healthy on $BASE within 60s. Last 30 log lines:"
+  tail -30 "$LOG" || true
+  echo "App log: $LOG"
+  exit 1
+fi
+
 echo
 echo "== GET /api/health =="
-curl -s "$BASE/api/health"; echo
+curl -s "$BASE/api/health" || true; echo
 
 echo
 echo "== POST /api/ai/test =="
 RESP="$(curl -s -X POST "$BASE/api/ai/test" \
   -H 'Content-Type: application/json' \
-  -d '{"message":"Respond with exactly: Java Bedrock integration works."}')"
+  -d '{"message":"Respond with exactly: Java Bedrock integration works."}' || true)"
 echo "$RESP"
 
 echo
