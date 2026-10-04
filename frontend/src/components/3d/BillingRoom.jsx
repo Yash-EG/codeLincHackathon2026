@@ -5,17 +5,20 @@
  */
 import {
   C, tex, Mat, Box, Plane, Rod, OnWall, RoomShell, Door, Clock, Sanitizer, SignBoard, WallArt,
-  SnakePlant, Succulent, TaskChair, Pickable, Chrome, Upholstery, ContactShadow,
+  SnakePlant, Succulent, TaskChair, Pickable, Chrome, Upholstery, ContactShadow, view,
 } from "./roomKit";
 
-/** One stop per content section on /billing. */
+/** One stop per content section on /billing, framed tight on its focal object (fov 24). */
 export const STOPS = [
-  { id: "intro",      camera: [4.4, 2.8, 3.4],  target: [0.1, 1.0, -1.4] },
-  { id: "you-pay",    camera: [2.2, 1.9, 1.2],  target: [0.2, 1.05, -1.2], focus: "counter" },
-  { id: "line-items", camera: [0.95, 1.55, -0.1], target: [0.55, 1.08, -1.0], focus: "terminal" },
-  { id: "network",    camera: [0.3, 1.8, 2.9],  target: [0.1, 1.5, -2.5],  focus: "network" },
-  { id: "doors",      camera: [1.0, 1.8, 2.6],  target: [-3, 1.2, 1.2],    focus: "records" },
+  { id: "intro",      ...view([0.2, 1.0, -1.4], 5.8, 42, 20) },
+  { id: "you-pay",    ...view([0.25, 0.95, -1.15], 3.4, 35, 20), focus: "counter" },
+  { id: "line-items", ...view([0.65, 1.1, -1.02], 1.3, 25, 30), focus: "terminal" },
+  { id: "network",    ...view([0.05, 1.45, -2.45], 5.6, 8, 8),  focus: "network" },
+  { id: "missing",    ...view([0.25, 0.95, -1.15], 3.4, 35, 20), focus: "counter" },
 ];
+
+/** Doors out of this room (id = the room it leads to). Also used for the camera fly-through. */
+export const DOORS = [{ id: "records", plaque: "6", wall: "left", u: 1.2 }];
 
 const WAINSCOT = { h: 1.0, color: C.sage };
 
@@ -113,9 +116,11 @@ export default function BillingRoom({ highlight, openDoor, onSelect }) {
     <group>
       <RoomShell leftColor={C.cream} backColor={C.cream} wainscot={WAINSCOT} />
 
-      <OnWall wall="left" u={1.2}>
-        <Door id="records" plaque="6" highlighted={highlight === "records"} open={openDoor === "records" ? 1 : 0} onSelect={onSelect} />
-      </OnWall>
+      {DOORS.map((d) => (
+        <OnWall key={d.id} wall={d.wall} u={d.u}>
+          <Door id={d.id} plaque={d.plaque} highlighted={highlight === d.id} open={openDoor === d.id ? 1 : 0} onSelect={onSelect} />
+        </OnWall>
+      ))}
       <OnWall wall="left" u={2.15} y={1.25}>
         <Sanitizer />
       </OnWall>

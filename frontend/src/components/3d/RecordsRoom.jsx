@@ -6,16 +6,22 @@
  */
 import {
   C, tex, Mat, Box, OnWall, RoomShell, Door, Clock, CorkBoard, Sanitizer, GlassCabinet, CoinJar,
-  PalmPlant, TaskChair, Laptop, Books, Pickable, Chrome, ContactShadow,
+  PalmPlant, TaskChair, Laptop, Books, Pickable, Chrome, ContactShadow, view,
 } from "./roomKit";
 
-/** One stop per content section on /records. */
+/** One stop per content section on /records, framed tight on its focal object (fov 24). */
 export const STOPS = [
-  { id: "intro",      camera: [4.3, 2.8, 3.3],    target: [-0.2, 1.0, -1.4] },
-  { id: "annual-max", camera: [1.9, 1.3, -0.1],    target: [1.34, 0.86, -0.82], focus: "jar" },
-  { id: "history",    camera: [0.6, 1.7, 0.6],    target: [-1.85, 0.8, -2.2], focus: "cabinets" },
-  { id: "reminders",  camera: [1.3, 1.8, 0.5],    target: [0.9, 1.75, -2.5],  focus: "board" },
-  { id: "doors",      camera: [1.0, 1.8, 2.5],    target: [-3, 1.2, 1.4],     focus: "consult" },
+  { id: "intro",      ...view([-0.2, 1.0, -1.3], 5.8, 42, 20) },
+  { id: "annual-max", ...view([1.34, 0.86, -0.82], 1.3, 40, 22), focus: "jar" },
+  { id: "history",    ...view([-1.85, 0.75, -2.1], 3.2, 25, 14), focus: "cabinets" },
+  { id: "reminders",  ...view([0.9, 1.75, -2.45], 2.6, 12, 6),  focus: "board" },
+  { id: "missing",    ...view([-0.2, 1.0, -1.3], 5.8, 42, 20) },
+];
+
+/** Doors out of this room (id = the room it leads to). Also used for the camera fly-through. */
+export const DOORS = [
+  { id: "consult", plaque: "7", wall: "left", u: 1.4 },
+  { id: "billing", plaque: "6", wall: "back", u: 2.35 },
 ];
 
 const WAINSCOT = { h: 1.0, color: C.sage };
@@ -82,14 +88,13 @@ export default function RecordsRoom({ highlight, openDoor, onSelect, jarFill = 0
     <group>
       <RoomShell leftColor={C.cream} backColor={C.cream} wainscot={WAINSCOT} />
 
-      <OnWall wall="left" u={1.4}>
-        <Door id="consult" plaque="7" highlighted={highlight === "consult"} open={openDoor === "consult" ? 1 : 0} onSelect={onSelect} />
-      </OnWall>
+      {DOORS.map((d) => (
+        <OnWall key={d.id} wall={d.wall} u={d.u}>
+          <Door id={d.id} plaque={d.plaque} highlighted={highlight === d.id} open={openDoor === d.id ? 1 : 0} onSelect={onSelect} />
+        </OnWall>
+      ))}
       <OnWall wall="left" u={2.3} y={1.25}>
         <Sanitizer />
-      </OnWall>
-      <OnWall wall="back" u={2.35}>
-        <Door id="billing" plaque="6" highlighted={highlight === "billing"} open={openDoor === "billing" ? 1 : 0} onSelect={onSelect} />
       </OnWall>
       <OnWall wall="back" u={0.9} y={1.75}>
         <Pickable id="board" onSelect={onSelect} ring={0}>

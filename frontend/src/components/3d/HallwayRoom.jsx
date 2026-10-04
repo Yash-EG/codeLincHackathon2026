@@ -3,7 +3,7 @@
  * Doors are data: add/remove entries in DOORS to change which rooms the hallway links to.
  * Preview:  <RoomPreview Room={HallwayRoom} stops={STOPS} />
  */
-import { C, OnWall, RoomShell, Door, Clock, WallArt, Sanitizer, SnakePlant, Succulent } from "./roomKit";
+import { C, OnWall, RoomShell, Door, Clock, WallArt, Sanitizer, SnakePlant, Succulent, view } from "./roomKit";
 
 /** wall + u (position along that wall). Plaque numbers follow the room numbers in the plan. */
 export const DOORS = [
@@ -12,11 +12,10 @@ export const DOORS = [
   { id: "consult",   plaque: "5", wall: "back", u: 1.9 },
 ];
 
+/** One stop per content <section> on /hallway. */
 export const STOPS = [
-  { id: "overview",  camera: [8.6, 6.8, 9.6],  target: [-0.2, 0.9, -0.3] },
-  { id: "reception", camera: [0.8, 1.9, 1.2],  target: [-3, 1.2, 0.6],  focus: "reception" },
-  { id: "operatory", camera: [-0.4, 1.9, 2.6], target: [-1.3, 1.2, -2.5], focus: "operatory" },
-  { id: "consult",   camera: [2.4, 1.9, 2.6],  target: [1.9, 1.2, -2.5],  focus: "consult" },
+  { id: "intro",     ...view([-0.4, 1.2, -1.2], 6.8, 40, 20) },
+  { id: "directory", ...view([0.3, 1.25, -2.4], 4.6, 15, 12), focus: "operatory" },
 ];
 
 const WAINSCOT = { h: 1.0, color: C.sage };

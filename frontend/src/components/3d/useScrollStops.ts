@@ -3,18 +3,17 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import type { RoomId } from '../../rooms'
 import { useSceneStore } from '../../store/sceneStore'
-import { keyframesFor } from '../rooms/keyframes'
 
 gsap.registerPlugin(ScrollTrigger)
 
 /**
- * Links native page scroll to the camera path. Every [data-camera] section in
+ * Links native page scroll to the camera stops. Every [data-camera] section in
  * <main> gets a ScrollTrigger that runs from "section top at 60% of the
  * viewport" to "section bottom at 60%". Sections are stacked in order, so the
  * sum of all trigger progresses is (index of the current section + the
  * fraction scrolled through it), which is what the camera rig reads.
  */
-export function useScrollKeyframes(room: RoomId) {
+export function useScrollStops(room: RoomId) {
   useLayoutEffect(() => {
     const main = document.getElementById('main')
     if (!main) return
@@ -26,7 +25,7 @@ export function useScrollKeyframes(room: RoomId) {
       const sections = Array.from(main.querySelectorAll<HTMLElement>('[data-camera]'))
       const ids = sections.map((s) => s.dataset.camera ?? '')
       if (ids.join('|') === signature) {
-        // Same sections, new sizes (fonts, forms, the lazy 3D arch): just re-measure.
+        // Same sections, new sizes (fonts, forms opening): just re-measure.
         ScrollTrigger.refresh()
         return
       }
@@ -41,7 +40,7 @@ export function useScrollKeyframes(room: RoomId) {
         }),
       )
       ScrollTrigger.refresh()
-      useSceneStore.getState().setPath(keyframesFor(room, ids), progress())
+      useSceneStore.getState().setSections(ids, progress())
     }
 
     build()

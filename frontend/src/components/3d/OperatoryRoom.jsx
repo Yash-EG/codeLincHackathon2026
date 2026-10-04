@@ -6,15 +6,22 @@
 import {
   C, tex, Mat, Box, Cyl, Rod, OnWall, RoomShell, Door, WallArt, WallMonitor, Clipboard, Sanitizer,
   GlassCabinet, CoinJar, JawModel, Molar, SnakePlant, Succulent, StarBase, Pickable,
-  Chrome, Porcelain, Upholstery, ContactShadow,
+  Chrome, Porcelain, Upholstery, ContactShadow, view,
 } from "./roomKit";
 
+/** One stop per content <section> on /operatory, framed tight on its focal object (fov 24). */
 export const STOPS = [
-  { id: "overview",   camera: [8.6, 6.8, 9.6],  target: [-0.2, 0.9, -0.3] },
-  { id: "procedure",  camera: [2.5, 2.6, 2.7],  target: [-0.4, 0.7, -0.5],  focus: "chair" },
-  { id: "tooth-map",  camera: [1.3, 2.1, 0.1],  target: [-3, 1.85, -1.0],   focus: "monitor" },
-  { id: "annual-max", camera: [0.1, 1.9, -0.6], target: [-3, 1.6, -1.8],    focus: "jar" },
-  { id: "doors",      camera: [2.6, 2.4, 2.4],  target: [-2.4, 1.2, -1.0],  focus: "hallway" },
+  { id: "intro",     ...view([-0.4, 1.0, -0.8], 6.5, 42, 22) },
+  { id: "describe",  ...view([-0.3, 0.85, -0.3], 3.6, 50, 24), focus: "chair" },
+  { id: "tooth-map", ...view([-2.95, 1.8, -1.0], 2.6, 80, 8),  focus: "monitor" },
+  { id: "planned",   ...view([0.9, 1.0, -2.0], 3.4, 20, 18) },
+  { id: "missing",   ...view([-0.3, 0.85, -0.3], 3.6, 50, 24), focus: "chair" },
+];
+
+/** Doors out of this room (id = the room it leads to). Also used for the camera fly-through. */
+export const DOORS = [
+  { id: "hallway", plaque: "4", wall: "left", u: 0.9 },
+  { id: "imaging", plaque: "3", wall: "back", u: -2.0 },
 ];
 
 const WAINSCOT = { h: 1.0, color: C.sage };
@@ -153,12 +160,11 @@ export default function OperatoryRoom({ highlight, openDoor, onSelect, jarFill =
     <group>
       <RoomShell leftColor={C.cream} backColor={C.cream} wainscot={WAINSCOT} />
 
-      <OnWall wall="left" u={0.9}>
-        <Door id="hallway" plaque="4" highlighted={highlight === "hallway"} open={openDoor === "hallway" ? 1 : 0} onSelect={onSelect} />
-      </OnWall>
-      <OnWall wall="back" u={-2.0}>
-        <Door id="imaging" plaque="3" highlighted={highlight === "imaging"} open={openDoor === "imaging" ? 1 : 0} onSelect={onSelect} />
-      </OnWall>
+      {DOORS.map((d) => (
+        <OnWall key={d.id} wall={d.wall} u={d.u}>
+          <Door id={d.id} plaque={d.plaque} highlighted={highlight === d.id} open={openDoor === d.id ? 1 : 0} onSelect={onSelect} />
+        </OnWall>
+      ))}
 
       <OnWall wall="left" u={2.0} y={1.25}>
         <Sanitizer />

@@ -3,16 +3,24 @@
  * Preview:  <RoomPreview Room={ConsultRoom} stops={STOPS} />
  */
 import {
-  C, tex, Mat, Box, Cyl, Rod, OnWall, RoomShell, Door, WallArt, CorkBoard, Sanitizer, GlassCabinet,
+  C, tex, Mat, Box, Cyl, Rod, OnWall, RoomShell, Door, CorkBoard, Sanitizer, GlassCabinet,
   SnakePlant, Succulent, StarBase, Laptop, Books, Molar, JawModel, Glass, Pickable,
-  Chrome, Upholstery, ContactShadow,
+  Chrome, Upholstery, ContactShadow, PlanYearCalendar, view,
 } from "./roomKit";
 
+/** One stop per content <section> on /consult, framed tight on its focal object (fov 24). */
 export const STOPS = [
-  { id: "overview",  camera: [8.6, 6.8, 9.6], target: [-0.2, 0.9, -0.3] },
-  { id: "timeline",  camera: [3.2, 2.6, 2.9], target: [0.5, 0.8, -0.8],  focus: "desk" },
-  { id: "reminders", camera: [0.6, 2.0, 0.6], target: [-3, 1.75, -1.1], focus: "board" },
-  { id: "doors",     camera: [2.6, 2.3, 2.6], target: [-2.2, 1.2, -1.2], focus: "hallway" },
+  { id: "intro",     ...view([-0.2, 1.0, -0.9], 6.4, 42, 22) },
+  { id: "this-year", ...view([0.45, 1.75, -2.45], 2.8, 18, 6),  focus: "calendar" },
+  { id: "next-year", ...view([0.55, 0.85, -0.8], 3.4, 45, 22),  focus: "desk" },
+  { id: "savings",   ...view([-2.95, 1.75, -1.1], 2.8, 78, 6),  focus: "board" },
+  { id: "missing",   ...view([0.45, 1.75, -2.45], 2.8, 18, 6),  focus: "calendar" },
+];
+
+/** Doors out of this room (id = the room it leads to). Also used for the camera fly-through. */
+export const DOORS = [
+  { id: "hallway", plaque: "5", wall: "left", u: 0.75 },
+  { id: "records", plaque: "7", wall: "back", u: -1.75 },
 ];
 
 const WAINSCOT = { h: 1.0, color: C.sage };
@@ -142,12 +150,11 @@ export default function ConsultRoom({ highlight, openDoor, onSelect }) {
     <group>
       <RoomShell leftColor={C.cream} backColor={C.cream} wainscot={WAINSCOT} />
 
-      <OnWall wall="left" u={0.75}>
-        <Door id="hallway" plaque="5" highlighted={highlight === "hallway"} open={openDoor === "hallway" ? 1 : 0} onSelect={onSelect} />
-      </OnWall>
-      <OnWall wall="back" u={-1.75}>
-        <Door id="records" plaque="7" highlighted={highlight === "records"} open={openDoor === "records" ? 1 : 0} onSelect={onSelect} />
-      </OnWall>
+      {DOORS.map((d) => (
+        <OnWall key={d.id} wall={d.wall} u={d.u}>
+          <Door id={d.id} plaque={d.plaque} highlighted={highlight === d.id} open={openDoor === d.id ? 1 : 0} onSelect={onSelect} />
+        </OnWall>
+      ))}
 
       <OnWall wall="left" u={1.95} y={1.25}>
         <Sanitizer />
@@ -157,8 +164,10 @@ export default function ConsultRoom({ highlight, openDoor, onSelect }) {
           <CorkBoard w={1.1} h={0.8} />
         </Pickable>
       </OnWall>
-      <OnWall wall="back" u={0.4} y={1.9}>
-        <WallArt w={0.6} h={0.82} />
+      <OnWall wall="back" u={0.45} y={1.75}>
+        <Pickable id="calendar" onSelect={onSelect} ring={0}>
+          <PlanYearCalendar s={0.72} />
+        </Pickable>
       </OnWall>
 
       <group position={[2.48, 0, -2.28]}>

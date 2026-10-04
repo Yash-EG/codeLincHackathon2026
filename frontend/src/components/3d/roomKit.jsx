@@ -816,6 +816,26 @@ export function Rod({ from, to, r = 0.012, seg = 12, children }) {
   );
 }
 
+/**
+ * A camera stop from its target: distance d (m), azimuth az (degrees from +z toward +x,
+ * so 45 looks in from the open front-right corner) and elevation el (degrees above the target).
+ */
+export function view(target, d, az = 45, el = 22) {
+  const a = (az * Math.PI) / 180, e = (el * Math.PI) / 180;
+  return {
+    camera: [target[0] + Math.sin(a) * Math.cos(e) * d, target[1] + Math.sin(e) * d, target[2] + Math.cos(a) * Math.cos(e) * d],
+    target,
+  };
+}
+
+/** World pose of a door mounted with <OnWall>: centre of the opening and the normal into the room. */
+export function doorPose({ wall, u, off = 0 }) {
+  const { W, D } = ROOM;
+  return wall === "left"
+    ? { center: [-W / 2 + off, 1.15, u], normal: [1, 0, 0] }
+    : { center: [u, 1.15, -D / 2 + off], normal: [0, 0, 1] };
+}
+
 /** Mount children on a wall. Children are modelled facing +z with the wall surface at z = 0. */
 export function OnWall({ wall = "back", u = 0, y = 0, off = 0, children }) {
   const { W, D } = ROOM;
@@ -950,6 +970,10 @@ export function Door({ id, plaque, plaqueSide = 1, frame = C.white, leaf = C.whi
   const hinge = useRef();
   const frost = tex.frost();
   const glow = hover || highlighted;
+  // A door that mounts open (the camera is coming through it) starts open instead of swinging.
+  useLayoutEffect(() => {
+    if (hinge.current) hinge.current.rotation.y = -open * 1.25;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useFrame((_, dt) => {
     if (hinge.current) hinge.current.rotation.y = THREE.MathUtils.damp(hinge.current.rotation.y, -open * 1.25, 5, dt);
   });
@@ -1099,6 +1123,42 @@ export function SignBoard({ text, w = 1, h = 0.25, bg = "#ffffff", fg = "#2f3740
       <Plane s={[w - 0.03, h - 0.03]} p={[0, 0, 0.031]}>
         <Mat map={map} r={0.6} />
       </Plane>
+    </group>
+  );
+}
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/**
+ * Plan-year wall calendar (from the DentalOffice prototype): months still left this plan year in
+ * orange, January (when the max and deductible reset) in green, past months grey. month = 0–11.
+ */
+export function PlanYearCalendar({ month = new Date().getMonth(), s = 1 }) {
+  const tw = 0.34, th = 0.27, gx = 0.04, gy = 0.05;
+  return (
+    <group scale={s}>
+      <Box s={[1.3, 1.62, 0.04]} p={[0, 0, 0.02]} r={0.015}><Mat c={C.white} r={0.5} /></Box>
+      <Box s={[1.3, 0.2, 0.045]} p={[0, 0.71, 0.025]}><Mat c="#8fb9dd" r={0.5} /></Box>
+      {[-0.35, 0.35].map((x) => (
+        <Cyl key={x} a={[0.025, 0.025, 0.06, 10]} p={[x, 0.81, 0.04]} rot={[Math.PI / 2, 0, 0]}><Chrome /></Cyl>
+      ))}
+      {MONTHS.map((m, i) => {
+        const x = ((i % 3) - 1) * (tw + gx);
+        const y = 0.43 - Math.floor(i / 3) * (th + gy);
+        const reset = i === 0 && month > 0;
+        const left = i >= month;
+        const c = reset ? C.mintGlow : left ? C.orange : "#dbe4ea";
+        return (
+          <group key={m} position={[x, y, 0.046]}>
+            <Box s={[tw, th, 0.012]} cast={false}>
+              <Mat c={c} e={left || reset ? c : undefined} ei={0.15} r={0.6} />
+            </Box>
+            <Box s={[tw, 0.05, 0.014]} p={[0, th / 2 - 0.025, 0.001]} cast={false}>
+              <Mat c={reset || left ? "#ffffff" : "#c4d0d8"} r={0.6} />
+            </Box>
+          </group>
+        );
+      })}
     </group>
   );
 }
@@ -1501,7 +1561,8 @@ export function useReducedMotion() {
   return reduce;
 }
 
-function Lights() {
+/** Warm key light with soft shadows plus a procedural environment. Shared by every room. */
+export function Lights() {
   return (
     <>
       <hemisphereLight args={["#fffaf2", "#c9a27a", 0.8]} />

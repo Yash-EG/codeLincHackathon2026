@@ -6,16 +6,21 @@ import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import {
   C, tex, Mat, Box, Cyl, Plane, Rod, OnWall, RoomShell, Door, Window, PalmPlant, Pickable, TaskChair,
-  ContactShadow,
+  ContactShadow, view,
 } from "./roomKit";
 
-/** One stop per content <section> on /reception (see SITE_NAVIGATION_PLAN.md §3.1). */
+/** One stop per content <section> on /reception, framed tight on its focal object (fov 24). */
 export const STOPS = [
-  { id: "welcome",      camera: [8.6, 6.8, 9.6], target: [-0.2, 0.9, -0.3] },
-  { id: "how-it-works", camera: [6.0, 3.6, 5.0], target: [0.9, 0.8, -1.8], focus: "waiting" },
-  { id: "check-in",     camera: [2.8, 2.7, 3.8], target: [-1.3, 0.9, 0.3],  focus: "desk" },
-  { id: "privacy",      camera: [2.0, 2.1, 2.6], target: [-1.4, 1.0, 0.2],  focus: "desk" },
-  { id: "doors",        camera: [3.4, 2.6, 3.0], target: [-1.9, 1.2, -2.5], focus: "hallway" },
+  { id: "welcome",      ...view([-0.8, 0.9, -0.3], 7.5, 42, 24) },
+  { id: "how-it-works", ...view([1.3, 0.6, -1.9], 4.6, 20, 18),  focus: "waiting" },
+  { id: "check-in",     ...view([-1.35, 0.85, 0.4], 4.2, 55, 24), focus: "desk" },
+  { id: "privacy",      ...view([-1.3, 1.0, 0.3], 3.4, 70, 20),  focus: "desk" },
+  { id: "doors",        ...view([-2.0, 1.2, -2.4], 4.0, 20, 12), focus: "hallway" },
+];
+
+/** Doors out of this room (id = the room it leads to). Also used for the camera fly-through. */
+export const DOORS = [
+  { id: "hallway", wall: "back", u: -2.0, look: { frame: "#9dbfaa", leaf: "#a9c9b5", glass: [0.56, 1.72] } },
 ];
 
 const deg = THREE.MathUtils.degToRad;
@@ -181,9 +186,11 @@ export default function ReceptionRoom({ highlight, openDoor, onSelect }) {
         <Window w={1.5} h={1.55} />
       </OnWall>
 
-      <OnWall wall="back" u={-2.0}>
-        <Door id="hallway" frame="#9dbfaa" leaf="#a9c9b5" glass={[0.56, 1.72]} highlighted={highlight === "hallway"} open={openDoor === "hallway" ? 1 : 0} onSelect={onSelect} />
-      </OnWall>
+      {DOORS.map((d) => (
+        <OnWall key={d.id} wall={d.wall} u={d.u}>
+          <Door id={d.id} {...d.look} highlighted={highlight === d.id} open={openDoor === d.id ? 1 : 0} onSelect={onSelect} />
+        </OnWall>
+      ))}
 
       <Pickable id="desk" onSelect={onSelect} highlighted={highlight === "desk"} ring={1.45} position={[-2.0, 0, 0.4]}>
         <ReceptionDesk />

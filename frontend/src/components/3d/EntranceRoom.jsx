@@ -4,15 +4,18 @@
  * Preview:  <RoomPreview Room={EntranceRoom} stops={STOPS} />
  */
 import {
-  C, ROOM, tex, Mat, Box, Cyl, Plane, Rod, Glass, SignBoard, SnakePlant, Succulent, Pickable, Chrome, ContactShadow,
+  C, ROOM, tex, Mat, Box, Cyl, Plane, Rod, Glass, SignBoard, SnakePlant, Succulent, Pickable, Chrome, ContactShadow, view,
 } from "./roomKit";
 
 export const STOPS = [
-  { id: "hero", camera: [5.6, 3.0, 6.2], target: [0, 1.6, -2.0] },
-  { id: "what", camera: [1.6, 1.7, 2.4], target: [0, 1.45, -2.0], focus: "doors" },
+  { id: "hero", ...view([0, 1.6, -1.8], 7.5, 35, 14) },
+  { id: "what", ...view([0, 1.4, -2.0], 4.0, 18, 8), focus: "doors" },
 ];
 
 const FRONT = -2.0; // z of the facade's front face
+
+/** The storefront doors lead to reception (they sit 0.5 m in front of the slab's back edge). */
+export const DOORS = [{ id: "reception", wall: "back", u: 0, off: ROOM.D / 2 + FRONT }];
 
 function ShopWindow({ x }) {
   const white = <Mat c={C.white} r={0.4} />;

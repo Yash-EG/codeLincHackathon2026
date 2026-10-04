@@ -5,17 +5,20 @@
  */
 import {
   C, tex, Mat, Box, Cyl, Rod, OnWall, RoomShell, Door, WallMonitor, Sanitizer, SignBoard, Glass,
-  SnakePlant, Succulent, TaskChair, Pickable, Chrome, Porcelain, Upholstery, ContactShadow,
+  SnakePlant, Succulent, TaskChair, Pickable, Chrome, Porcelain, Upholstery, ContactShadow, view,
 } from "./roomKit";
 
-/** One stop per content section on /imaging. */
+/** One stop per content section on /imaging, framed tight on its focal object (fov 24). */
 export const STOPS = [
-  { id: "intro",      camera: [4.6, 2.9, 3.6],  target: [-0.1, 1.2, -1.6] },
-  { id: "coverage",   camera: [1.8, 1.9, 1.0],  target: [-0.5, 1.4, -1.9], focus: "xray" },
-  { id: "limits",     camera: [1.3, 1.8, -0.4], target: [0.95, 1.7, -2.5], focus: "monitor" },
-  { id: "fine-print", camera: [-0.4, 1.6, 0.2], target: [-3, 1.5, -0.9],   focus: "aprons" },
-  { id: "doors",      camera: [1.2, 1.8, 2.4],  target: [-3, 1.2, 1.3],    focus: "operatory" },
+  { id: "intro",      ...view([-0.1, 1.2, -1.6], 5.8, 45, 20) },
+  { id: "coverage",   ...view([-0.5, 1.4, -1.9], 3.2, 40, 12), focus: "xray" },
+  { id: "limits",     ...view([0.95, 1.7, -2.45], 2.4, 15, 6), focus: "monitor" },
+  { id: "fine-print", ...view([-2.95, 1.5, -0.9], 2.8, 80, 8), focus: "aprons" },
+  { id: "missing",    ...view([-0.5, 1.4, -1.9], 3.2, 40, 12), focus: "xray" },
 ];
+
+/** Doors out of this room (id = the room it leads to). Also used for the camera fly-through. */
+export const DOORS = [{ id: "operatory", plaque: "3", wall: "left", u: 1.3 }];
 
 const WAINSCOT = { h: 1.0, color: "#a9c6d8" };
 const shell = <Mat c="#f6f4ef" r={0.35} />;
@@ -100,9 +103,11 @@ export default function ImagingRoom({ highlight, openDoor, onSelect }) {
     <group>
       <RoomShell leftColor={C.cream} backColor={C.cream} wainscot={WAINSCOT} />
 
-      <OnWall wall="left" u={1.3}>
-        <Door id="operatory" plaque="3" highlighted={highlight === "operatory"} open={openDoor === "operatory" ? 1 : 0} onSelect={onSelect} />
-      </OnWall>
+      {DOORS.map((d) => (
+        <OnWall key={d.id} wall={d.wall} u={d.u}>
+          <Door id={d.id} plaque={d.plaque} highlighted={highlight === d.id} open={openDoor === d.id ? 1 : 0} onSelect={onSelect} />
+        </OnWall>
+      ))}
       <OnWall wall="left" u={2.2} y={1.25}>
         <Sanitizer />
       </OnWall>
